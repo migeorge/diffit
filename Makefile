@@ -30,7 +30,7 @@ git-config:       ## point git at the tool
 # The Command Line Tools ship Swift Testing outside the default search path;
 # without Xcode, `swift test` needs to be told where it is (see DECISIONS.md).
 CLT_FRAMEWORKS = /Library/Developer/CommandLineTools/Library/Developer/Frameworks
-TEST_FLAGS = -Xswiftc -F$(CLT_FRAMEWORKS) -Xlinker -rpath -Xlinker $(CLT_FRAMEWORKS)
+TEST_FLAGS = -Xswiftc -F$(CLT_FRAMEWORKS) -Xswiftc -Xfrontend -Xswiftc -disable-cross-import-overlays -Xlinker -rpath -Xlinker $(CLT_FRAMEWORKS)
 
 test:             ## run the unit tests (pass FILTER=Perf to select a suite)
 	swift test $(TEST_FLAGS) $(if $(FILTER),--filter $(FILTER),)
