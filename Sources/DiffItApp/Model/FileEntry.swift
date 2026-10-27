@@ -1,0 +1,52 @@
+import Foundation
+import DiffCore
+import DiffItProtocol
+
+enum FileStatus {
+    case modified, added, deleted, binary, unreadable
+}
+
+@MainActor @Observable
+final class FileEntry: Identifiable {
+    let id = UUID()
+    let displayPath: String
+    let old: FileSide?
+    let new: FileSide?
+
+    var status: FileStatus
+    var result: DiffResult?
+    var isLoading = false
+    var error: String?
+    /// Bumps on every reload; views use it to know content changed.
+    var generation = 0
+    /// Set when a side was too large for intra-line highlighting.
+    var intraLineDisabled = false
+    /// Byte sizes of each side, shown for binary files.
+    var oldSize: Int?
+    var newSize: Int?
+
+    /// Loader bookkeeping: a reload arrived while one was running.
+    var reloadRequested = false
+
+    init(displayPath: String, old: FileSide?, new: FileSide?) {
+        self.displayPath = displayPath
+        self.old = old
+        self.new = new
+        switch (old, new) {
+        case (nil, _): status = .added
+        case (_, nil): status = .deleted
+        default: status = .modified
+        }
+    }
+
+    var fileName: String { (displayPath as NSString).lastPathComponent }
+    var additions: Int { result?.additions ?? 0 }
+    var deletions: Int { result?.deletions ?? 0 }
+
+    /// The side that lives in the working tree, if any (for Reveal in Finder etc.).
+    var liveSide: FileSide? {
+        if let new, new.isLive { return new }
+        if let old, old.isLive { return old }
+        return nil
+    }
+}

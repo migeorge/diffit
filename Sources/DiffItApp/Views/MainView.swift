@@ -1,14 +1,21 @@
 import SwiftUI
 
 struct MainView: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
         NavigationSplitView {
-            List {}
-                .navigationSplitViewColumnWidth(min: 200, ideal: 260)
+            SidebarView()
+                .navigationSplitViewColumnWidth(min: 200, ideal: 280)
         } detail: {
-            ContentUnavailableView("No Changes", systemImage: "doc.text.magnifyingglass",
-                                   description: Text("Run `git difftool` to open a changeset."))
+            if let entry = model.selectedEntry {
+                DiffDetailView(entry: entry)
+                    .id(entry.id)
+            } else {
+                EmptyStateView()
+            }
         }
-        .navigationTitle("DiffIt")
+        .navigationTitle(model.selectedEntry?.displayPath ?? "DiffIt")
+        .navigationSubtitle(model.selectedChangeSet?.title ?? "")
     }
 }
