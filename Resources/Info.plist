@@ -15,5 +15,6 @@
 	<key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
 	<key>NSSupportsAutomaticTermination</key><false/>
 	<key>NSSupportsSuddenTermination</key><false/>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
 </dict>
 </plist>

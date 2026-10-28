@@ -101,7 +101,7 @@ private struct FileRow: View {
     private var symbol: String {
         switch entry.status {
         case .added: "doc.badge.plus"
-        case .deleted: "doc.badge.minus"
+        case .deleted: "trash"   // there is no doc.badge.minus symbol
         case .modified: "doc.text"
         case .binary: "doc.zipper"
         case .unreadable: "doc.questionmark"
