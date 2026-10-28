@@ -12,6 +12,9 @@ final class AppModel {
     /// Called when a message starts a new changeset; the app delegate shows and activates the window.
     @ObservationIgnored var onNewChangeSet: (() -> Void)?
 
+    /// The pair view currently on screen, so menu commands can drive change navigation.
+    @ObservationIgnored weak var activeNavigator: (any DiffNavigator)?
+
     var selectedEntry: FileEntry? {
         guard let selection else { return nil }
         for cs in changeSets {

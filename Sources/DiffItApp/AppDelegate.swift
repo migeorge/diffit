@@ -70,7 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showMainWindow() {
         if window == nil {
-            let root = MainView().environment(AppModel.shared)
+            let root = MainView().environment(AppModel.shared).environment(AppSettings.shared)
             let hosting = NSHostingController(rootView: root)
             hosting.sceneBridgingOptions = [.toolbars, .title]
             let window = NSWindow(

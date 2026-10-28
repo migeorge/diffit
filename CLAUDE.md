@@ -25,7 +25,7 @@ Native macOS git difftool for reviewing code changes, especially ones made by AI
 3. Deviations from the plan go in `.plan/DECISIONS.md` (append-only, one paragraph each with the reason).
 4. Build: `swift build` · Tests: `make test` (not bare `swift test` — see `DECISIONS.md`) · Bundle: `make app` · Install: `make install && make git-config`.
 5. Visual checks: run `open build/DiffIt.app`, feed it files with `.build/release/diffit A B`, take a screenshot (`screencapture -x …`) and look at it in both light and dark mode.
-6. Never read `textView.layoutManager` on a TextKit 2 view (it downgrades to TextKit 1). The rendering route (TextKit 2 vs 1) is decided once in Phase 4 and recorded in `DECISIONS.md`.
+6. The text panes are TextKit 1 (`usingTextLayoutManager: false`, non-contiguous layout) by decision in Phase 4; see `DECISIONS.md` for the measurements. Do not switch a pane to TextKit 2 casually. Row positions are arithmetic (fixed row height), never derived from layout.
 
 ## Style
 

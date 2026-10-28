@@ -20,6 +20,11 @@ struct DiffItApp: App {
                     .disabled(AppModel.shared.selectedEntry == nil)
             }
             CommandMenu("Navigate") {
+                Button("Next Change") { AppModel.shared.activeNavigator?.nextChange() }
+                    .keyboardShortcut(.downArrow, modifiers: .command)
+                Button("Previous Change") { AppModel.shared.activeNavigator?.previousChange() }
+                    .keyboardShortcut(.upArrow, modifiers: .command)
+                Divider()
                 Button("Next File") { AppModel.shared.selectNextFile() }
                     .keyboardShortcut(.downArrow, modifiers: [.option, .command])
                 Button("Previous File") { AppModel.shared.selectPreviousFile() }

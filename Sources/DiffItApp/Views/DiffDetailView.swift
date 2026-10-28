@@ -1,44 +1,107 @@
 import SwiftUI
 
-/// Phase 3 placeholder: shows what the model knows about the selected entry.
-/// Phase 4 replaces the body with the side-by-side panes.
+/// The selected file: a thin header with each side's label and the change counts, then the panes.
 struct DiffDetailView: View {
+    @Environment(AppSettings.self) private var settings
     let entry: FileEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(entry.displayPath)
-                .font(.title3.weight(.semibold))
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-                row("Status", "\(entry.status)")
-                row("Old", entry.old.map { "\($0.label) — \($0.path)\($0.isLive ? " (live)" : "")" } ?? "—")
-                row("New", entry.new.map { "\($0.label) — \($0.path)\($0.isLive ? " (live)" : "")" } ?? "—")
-                if let result = entry.result {
-                    row("Rows", "\(result.rows.count) rows, \(result.changeBlocks.count) change blocks")
-                    row("Changes", "+\(result.additions) −\(result.deletions)")
-                    row("Identical", result.isIdentical ? "yes" : "no")
-                }
-                row("Generation", "\(entry.generation)")
-                if let error = entry.error {
-                    row("Error", error)
-                }
-            }
-            .font(.system(.body, design: .monospaced))
-            .textSelection(.enabled)
-            if entry.isLoading {
-                ProgressView("Diffing…")
-            }
-            Spacer()
+        VStack(spacing: 0) {
+            header
+            Divider()
+            banners
+            content
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    @ViewBuilder
-    private func row(_ label: String, _ value: String) -> some View {
-        GridRow {
-            Text(label).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
-            Text(value).lineLimit(2).truncationMode(.middle)
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(spacing: 0) {
+            sideLabel(entry.old?.label ?? "No original", count: entry.deletions, sign: "−", color: .red)
+            Divider().frame(height: 16)
+            sideLabel(entry.new?.label ?? "Deleted", count: entry.additions, sign: "+", color: .green)
         }
+        .font(.callout)
+        .padding(.vertical, 4)
+        .background(.bar)
+    }
+
+    private func sideLabel(_ label: String, count: Int, sign: String, color: Color) -> some View {
+        HStack {
+            Text(label).foregroundStyle(.secondary)
+            Spacer()
+            if entry.isLoading {
+                ProgressView().controlSize(.mini)
+            } else if count > 0 {
+                Text("\(sign)\(count)")
+                    .foregroundStyle(color)
+                    .monospacedDigit()
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Banners
+
+    @ViewBuilder
+    private var banners: some View {
+        if let error = entry.error {
+            banner(error, symbol: "exclamationmark.triangle", tint: .orange)
+        }
+        if entry.intraLineDisabled {
+            banner("Large file — intra-line highlighting disabled", symbol: "info.circle", tint: .secondary)
+        }
+        if entry.status == .modified, entry.result?.isIdentical == true {
+            banner("Files are identical", symbol: "equal.circle", tint: .secondary)
+        }
+    }
+
+    private func banner(_ text: String, symbol: String, tint: Color) -> some View {
+        VStack(spacing: 0) {
+            Label(text, systemImage: symbol)
+                .font(.callout)
+                .foregroundStyle(tint)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+            Divider()
+        }
+    }
+
+    // MARK: - Content
+
+    @ViewBuilder
+    private var content: some View {
+        if entry.status == .binary {
+            binaryPlaceholder
+        } else {
+            DiffPairRepresentable(
+                entryID: entry.id,
+                generation: entry.generation,
+                result: entry.result,
+                font: settings.font,
+                tabWidth: settings.tabWidth,
+                showChangeHatch: settings.showChangeHatch,
+                settingsVersion: settings.version
+            )
+        }
+    }
+
+    private var binaryPlaceholder: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "doc.zipper").font(.largeTitle).foregroundStyle(.secondary)
+            Text("Binary file").font(.title3)
+            Text("\(sizeText(entry.oldSize)) → \(sizeText(entry.newSize))")
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func sizeText(_ bytes: Int?) -> String {
+        guard let bytes else { return "—" }
+        return ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
     }
 }
