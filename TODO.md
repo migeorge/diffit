@@ -8,7 +8,8 @@ Issues and ideas collected while using DiffIt day to day. Keep entries short; mo
 - Beyond 1000 watched files only the selected file is watched (reloaded when selected).
 - No "missing final newline" marker in the gutter.
 
-- Syntax highlighting has no language injection beyond Markdown inline: fenced code in Markdown, JS inside HTML and SQL in strings are one colour.
+- Syntax highlighting is lexical: function and type names come from heuristics (word after `func`/`def`, capitalised word, word before `(`), so an exported Go variable or a capitalised C function can get the wrong colour. SQL or HTML inside string literals is one colour.
+- Shell highlighting guesses the command word by position; words after unusual separators (`||` at a line start after a continuation, `time -p`) can miss.
 - The language is chosen per file, so a `.h` header is always coloured as C (never C++ or Objective-C).
 
 ## Ideas

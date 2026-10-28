@@ -65,7 +65,40 @@ Lines that moved unchanged to another place in the file are tinted violet at bot
 
 ### Syntax highlighting
 
-Code is coloured with [tree-sitter](https://tree-sitter.github.io/) grammars bundled into the app; no network, no plug-ins. The language comes from the file extension (or a `#!` line): Go, Python, Bash/zsh, fish, Markdown, Swift, C, C++, Rust, JSON, YAML, TOML, JavaScript, TypeScript/TSX, HTML, CSS, Ruby, Java, Kotlin, Lua, Dockerfile, Objective-C, Haskell, Elixir, SQL, PHP, Scala and XML (including plists and storyboards). Colours follow Xcode's default theme and can be switched off in Settings.
+Code is coloured by a small built-in lexer per language; no grammars to download, no plug-ins, and the binary stays around a megabyte. The language comes from the file extension or file name (or a `#!` line for extensionless scripts). Colours follow Xcode's default theme and can be switched off in Settings.
+
+| Language | Extensions and names |
+|---|---|
+| Go | `.go` |
+| Python | `.py`, `.pyi`, `.pyw`, `#!…python` |
+| Shell (bash, zsh, sh) | `.sh`, `.bash`, `.zsh`, `.ksh`, `.bashrc`, `.zshrc`, `.profile`…, `#!…sh` |
+| fish | `.fish`, `#!…fish` |
+| Markdown | `.md`, `.markdown`, `.mdown`, `.mkd` |
+| Swift | `.swift` |
+| C | `.c`, `.h` |
+| C++ | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.ino`, `.ipp` |
+| Objective-C | `.m`, `.mm` |
+| Rust | `.rs` |
+| JSON | `.json`, `.jsonc`, `.webmanifest`, `.geojson`, `Package.resolved` |
+| YAML | `.yml`, `.yaml` |
+| TOML | `.toml`, `Cargo.lock` |
+| JavaScript | `.js`, `.mjs`, `.cjs`, `.jsx`, `#!…node` |
+| TypeScript / TSX | `.ts`, `.mts`, `.cts` / `.tsx` |
+| HTML | `.html`, `.htm`, `.xhtml` |
+| CSS | `.css` |
+| Ruby | `.rb`, `.rake`, `.gemspec`, `.ru`, `Gemfile`, `Rakefile`, `Podfile`, `Fastfile`, `Brewfile` |
+| Java | `.java` |
+| Kotlin | `.kt`, `.kts` |
+| Scala | `.scala`, `.sc`, `.sbt` |
+| Lua | `.lua` |
+| Dockerfile | `Dockerfile`, `Containerfile`, `*.dockerfile` |
+| Haskell | `.hs` |
+| Elixir | `.ex`, `.exs` |
+| SQL | `.sql` |
+| PHP | `.php`, `.phtml` |
+| XML | `.xml`, `.plist`, `.xib`, `.storyboard`, `.entitlements`, `.xcscheme`, `.svg`, `.xsd`, `.xsl` |
+
+Markdown fenced code blocks are coloured as the language named after the fence, HTML `<script>` and `<style>` blocks as JavaScript and CSS, and Dockerfile `RUN` lines as shell. Go, Python, shell, fish and Markdown get the most attention (command words in shells, decorators and f-strings in Python, qualified types in Go, inline marks and nested lists in Markdown); the other languages cover keywords, strings, comments, numbers, attributes and a few heuristics for function and type names.
 
 Vertical scrolling is synchronised between the panes; horizontal scrolling is independent. Text in both panes is selectable and searchable with the standard Find bar.
 
@@ -75,7 +108,7 @@ Vertical scrolling is synchronised between the panes; horizontal scrolling is in
 - The app diffs with a patience algorithm (Myers fallback) in `DiffCore`, builds side-by-side rows, and refines modified lines at the word level.
 - Each pane is an `NSTextView` with every row pinned to the same height, so row alignment and scroll sync are plain arithmetic. 50 000-line files open in well under a second.
 - A kqueue watcher per working-tree file reloads the diff on write, atomic save, or rename.
-- Syntax colours are computed with the diff, off the main thread: each side is parsed by its tree-sitter grammar and the grammar's own `highlights.scm` is run over the tree. Captures are folded onto a dozen token classes and applied as plain attributed-string colours, so the panes stay the same fixed-height `NSTextView`s.
+- Syntax colours are computed with the diff, off the main thread: a line-by-line lexer per language (`SyntaxHighlight`) carries a small state across lines (open comment, string, fenced block) and emits coloured runs, which `DiffTextBuilder` applies as plain attributed-string colours. The panes stay the same fixed-height `NSTextView`s. Highlighting 25 000 lines of Go takes about 0.3 s.
 
 ## Build from source
 
@@ -86,9 +119,9 @@ make app             # assemble build/DiffIt.app
 make run             # launch it
 ```
 
-Layout: `Sources/DiffCore` (diff engine, no AppKit), `Sources/DiffItProtocol` (socket messages), `Sources/diffit` (CLI), `Sources/SyntaxHighlight` (tree-sitter grammars → coloured spans), `Sources/DiffItApp` (app), `Tests/`.
+Layout: `Sources/DiffCore` (diff engine, no AppKit), `Sources/DiffItProtocol` (socket messages), `Sources/diffit` (CLI), `Sources/SyntaxHighlight` (per-language lexers → coloured spans), `Sources/DiffItApp` (app), `Tests/`.
 
-Grammars are SwiftPM dependencies pinned by commit in `Package.swift`; `Sources/TreeSitterFish` and `Sources/TreeSitterScanners` hold the few generated C files upstream does not package. After bumping a grammar, run `Scripts/vendor-queries.py` to refresh the bundled highlight queries and scanners.
+There are no package dependencies. Adding a language means a `LanguageSpec` table in `Sources/SyntaxHighlight/Specs` (keywords, comment and string forms, a few heuristic flags), an entry in `SyntaxLanguage`, and a test in `Tests/SyntaxHighlightTests`. `SYNTAX_DUMP=a.go:b.md swift test --filter DumpTests` prints a file with its coloured runs marked, which is the quickest way to tune a table.
 
 ## Not in v1
 
