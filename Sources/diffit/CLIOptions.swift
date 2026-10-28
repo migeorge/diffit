@@ -15,6 +15,8 @@ enum Command {
     case activate
     case compare(old: String, new: String, displayPath: String?)
     case gitConfig
+    case gitUnconfig
+    case gitCheck
     case stubServer
     case version
     case help
@@ -31,7 +33,9 @@ struct CLIOptions {
     static let usage = """
     usage: diffit                                  launch/activate the app
            diffit OLD NEW [DISPLAYPATH]            compare two files or two directories
-           diffit --git-config                     configure git to use diffit as its difftool
+           diffit --git-config                     configure git to use this diffit as its difftool
+           diffit --git-unconfig                   remove that configuration
+           diffit --git-check                      exit 0 if git is configured for this diffit
            diffit --old-label L --new-label L      override side labels
            diffit --title T                        override changeset title
            diffit --version | --help
@@ -52,6 +56,8 @@ struct CLIOptions {
             let arg = args[i]
             switch arg {
             case "--git-config": options.command = .gitConfig
+            case "--git-unconfig": options.command = .gitUnconfig
+            case "--git-check": options.command = .gitCheck
             case "--stub-server": options.command = .stubServer
             case "--version", "-v": options.command = .version
             case "--help", "-h": options.command = .help

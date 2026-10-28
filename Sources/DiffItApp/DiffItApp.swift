@@ -12,6 +12,13 @@ struct DiffItApp: App {
                 .environment(AppSettings.shared)
         }
         .commands {
+            CommandGroup(after: .appInfo) {
+                Divider()
+                Button("Install Command Line Tool") { Task { await CLIInstaller.shared.install() } }
+                    .disabled(!CLIInstaller.shared.canInstall)
+                Button("Remove Command Line Tool…") { CLIInstaller.shared.confirmRemove() }
+                    .disabled(!CLIInstaller.shared.isPresent || CLIInstaller.shared.isBusy)
+            }
             CommandGroup(after: .saveItem) {
                 Button("Close Changeset") { AppModel.shared.closeSelectedChangeSet() }
                     .keyboardShortcut("w", modifiers: [.shift, .command])

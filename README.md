@@ -14,24 +14,21 @@ A native macOS `git difftool` for reading code changes, especially the ones an A
 
 ## Install
 
-Requires Xcode 26 (or the matching Command Line Tools) and macOS 26.
+Requires macOS 26. Put `DiffIt.app` in /Applications, open it, and click **Install Command Line Tool** on the empty window (also in the DiffIt menu). That does two things:
+
+- links `~/.local/bin/diffit` to the tool inside the app bundle, for `diffit OLD NEW` from a terminal (add `~/.local/bin` to your `PATH` for that; git does not need it);
+- sets `diff.tool`, `difftool.diffit.cmd` and `difftool.prompt` in `~/.gitconfig`, with the tool's absolute path so it works from any shell or GUI git client.
+
+The setup card disappears once both are in place and comes back if either goes missing (the app moved, the config was edited). **DiffIt ▸ Remove Command Line Tool…** undoes both. The same steps are available from a terminal as `diffit --git-config`, `diffit --git-unconfig` and `diffit --git-check`.
+
+To build from source you need Xcode 26 or the matching Command Line Tools:
 
 ```sh
 git clone <this repository> diffit
 cd diffit
 make install      # builds, assembles DiffIt.app in /Applications, symlinks ~/.local/bin/diffit
-make git-config   # sets diff.tool, difftool.diffit.cmd and difftool.prompt in ~/.gitconfig
+make git-config   # same as the in-app Install button's git step
 ```
-
-Make sure `~/.local/bin` is on your `PATH`. `make git-config` is equivalent to:
-
-```sh
-git config --global diff.tool diffit
-git config --global difftool.diffit.cmd 'diffit "$LOCAL" "$REMOTE" "$MERGED"'
-git config --global difftool.prompt false
-```
-
-To undo it: `git config --global --unset diff.tool`.
 
 ## Use
 

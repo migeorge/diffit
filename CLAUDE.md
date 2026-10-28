@@ -4,7 +4,7 @@ Native macOS git difftool for reviewing code changes, especially ones made by AI
 
 ## Non-negotiables
 
-- **View-only.** No code path may write to a user file. Text views are `isEditable = false`. The app writes only under `~/Library/Caches/DiffIt` and `~/Library/Application Support/DiffIt`.
+- **View-only.** No code path may write to a user file. Text views are `isEditable = false`. The app writes only under `~/Library/Caches/DiffIt` and `~/Library/Application Support/DiffIt`, with one explicit exception: the user's Install/Remove Command Line Tool action (`CLIInstaller`) manages the `~/.local/bin/diffit` symlink and, through the CLI's `--git-config`/`--git-unconfig`, three keys in the global git config. Nothing else may touch either.
 - **Native.** Swift + SwiftUI shell + AppKit `NSTextView` panes. No Electron, no web views, no third-party UI frameworks.
 - **CLI returns immediately.** `diffit` must snapshot git's temp files and hand off to the app in < 30 ms when the app is running. git deletes `$LOCAL`/`$REMOTE` temp files the moment the CLI exits.
 - **Original on the left, changed on the right.**

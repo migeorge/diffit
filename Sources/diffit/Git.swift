@@ -8,11 +8,39 @@ enum Git {
         return output
     }
 
-    /// Writes the global config that makes `git difftool` call us; returns the lines it set.
-    static func configure() throws -> [String] {
+    // MARK: - Global difftool configuration
+
+    static let toolName = "diffit"
+
+    /// The `difftool.diffit.cmd` value for a tool at `cliPath`: an absolute path, so git finds it
+    /// without `~/.local/bin` on PATH.
+    static func command(for cliPath: String) -> String {
+        "\"\(cliPath)\" \"$LOCAL\" \"$REMOTE\" \"$MERGED\""
+    }
+
+    struct Status {
+        var tool: String?
+        var command: String?
+        var prompt: String?
+
+        /// True when all three keys are set for the tool at `cliPath`.
+        func isConfigured(for cliPath: String) -> Bool {
+            tool == toolName && command == Git.command(for: cliPath) && prompt == "false"
+        }
+    }
+
+    static func status() throws -> Status {
+        guard isAvailable else { throw CLIError.failed("git not found") }
+        return Status(tool: run(["config", "--global", "--get", "diff.tool"]),
+                      command: run(["config", "--global", "--get", "difftool.\(toolName).cmd"]),
+                      prompt: run(["config", "--global", "--get", "difftool.prompt"]))
+    }
+
+    /// Writes the global config that makes `git difftool` call the tool at `cliPath`; returns the lines set.
+    static func configure(cliPath: String) throws -> [String] {
         let settings: [(String, String)] = [
-            ("diff.tool", "diffit"),
-            ("difftool.diffit.cmd", "diffit \"$LOCAL\" \"$REMOTE\" \"$MERGED\""),
+            ("diff.tool", toolName),
+            ("difftool.\(toolName).cmd", command(for: cliPath)),
             ("difftool.prompt", "false"),
         ]
         var lines: [String] = []
@@ -25,10 +53,30 @@ enum Git {
         return lines
     }
 
+    /// Removes what `configure` wrote. `difftool.prompt` is only unset when diffit was the tool,
+    /// since another tool's setup may rely on it. Returns the keys unset.
+    static func unconfigure() throws -> [String] {
+        let current = try status()
+        var removed: [String] = []
+        func unset(_ key: String) throws {
+            guard run(["config", "--global", "--unset", key]) != nil else {
+                throw CLIError.failed("git config --global --unset \(key) failed")
+            }
+            removed.append(key)
+        }
+        if current.command != nil { try unset("difftool.\(toolName).cmd") }
+        if current.tool == toolName {
+            try unset("diff.tool")
+            if current.prompt != nil { try unset("difftool.prompt") }
+        }
+        return removed
+    }
+
     // MARK: - Private
 
     /// Runs git with `arguments`; returns trimmed stdout on exit 0, nil otherwise.
     private static func run(_ arguments: [String]) -> String? {
+        guard let executable else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
@@ -42,13 +90,14 @@ enum Git {
         return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// First `git` on PATH; `/usr/bin/git` (the Xcode shim) as a last resort.
-    private static let executable: String = {
+    private static var isAvailable: Bool { executable != nil }
+
+    /// First `git` on PATH, then the usual install locations (the app launches us with a minimal
+    /// PATH), then the Xcode shim.
+    private static let executable: String? = {
         let path = ProcessInfo.processInfo.environment["PATH"] ?? ""
-        for dir in path.split(separator: ":") {
-            let candidate = "\(dir)/git"
-            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
-        }
-        return "/usr/bin/git"
+        let candidates = path.split(separator: ":").map { "\($0)/git" }
+            + ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
+        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }()
 }

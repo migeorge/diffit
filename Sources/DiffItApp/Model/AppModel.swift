@@ -40,7 +40,7 @@ final class AppModel {
 
     func ingest(_ message: OpenMessage) -> Ack {
         guard message.version == OpenMessage.currentVersion else {
-            return Ack(ok: false, error: "diffit CLI protocol version \(message.version) does not match the app (\(OpenMessage.currentVersion)); run `make install`")
+            return Ack(ok: false, error: "diffit CLI protocol version \(message.version) does not match the app (\(OpenMessage.currentVersion)); reinstall the command line tool from the DiffIt menu")
         }
 
         let changeSet: ChangeSet

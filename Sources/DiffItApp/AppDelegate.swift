@@ -25,6 +25,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         purgeOldSnapshots()
         showMainWindow()
         NSApp.activate()
+        CLIInstaller.shared.refresh()
+    }
+
+    /// The link or git config may have changed in a terminal; re-check whenever we come forward.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        CLIInstaller.shared.refresh()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
