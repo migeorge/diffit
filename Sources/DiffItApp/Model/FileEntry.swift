@@ -51,6 +51,17 @@ final class FileEntry: Identifiable {
     }
 
     var fileName: String { (displayPath as NSString).lastPathComponent }
+
+    /// SF Symbol for the status (sidebar rows and tabs).
+    var systemImage: String {
+        switch status {
+        case .added: "doc.badge.plus"
+        case .deleted: "trash"   // there is no doc.badge.minus symbol
+        case .modified: "doc.text"
+        case .binary: "doc.zipper"
+        case .unreadable: "doc.questionmark"
+        }
+    }
     var liveSides: [FileSide] { [old, new].compactMap { $0 }.filter(\.isLive) }
     var additions: Int { result?.additions ?? 0 }
     var deletions: Int { result?.deletions ?? 0 }

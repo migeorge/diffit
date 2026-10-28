@@ -7,8 +7,23 @@ final class AppModel {
 
     /// Newest first.
     var changeSets: [ChangeSet] = []
+    /// The sidebar's highlighted file. Setting it previews that file in a tab; it follows the
+    /// active tab the other way round.
     var selection: FileEntry.ID? {
-        didSet { ensureSelectedIsWatched() }
+        didSet {
+            guard selection != oldValue else { return }
+            if let selection { open(selection, pin: false) }
+            ensureSelectedIsWatched()
+        }
+    }
+
+    /// Open files, in tab-bar order.
+    var tabs: [DiffTab] = []
+    var activeTabID: DiffTab.ID? {
+        didSet {
+            guard activeTabID != oldValue else { return }
+            if let tab = activeTab, selection != tab.entryID { selection = tab.entryID }
+        }
     }
 
     /// Descriptor budget: beyond this many watched files, only the selected file is watched.
@@ -27,17 +42,107 @@ final class AppModel {
     /// Mirror of the navigator's position for the toolbar indicator and menu enabling.
     var changeNavigation = ChangeNavigationState.none
 
+    /// The file in the active tab.
     var selectedEntry: FileEntry? {
-        guard let selection else { return nil }
+        activeTab.flatMap { entry(for: $0) }
+    }
+
+    var selectedChangeSet: ChangeSet? {
+        guard let id = activeTab?.entryID else { return nil }
+        return changeSets.first { cs in cs.files.contains { $0.id == id } }
+    }
+
+    var activeTab: DiffTab? {
+        guard let activeTabID else { return nil }
+        return tabs.first { $0.id == activeTabID }
+    }
+
+    func entry(for tab: DiffTab) -> FileEntry? {
+        entry(withID: tab.entryID)
+    }
+
+    private func entry(withID id: FileEntry.ID) -> FileEntry? {
         for cs in changeSets {
-            if let entry = cs.files.first(where: { $0.id == selection }) { return entry }
+            if let entry = cs.files.first(where: { $0.id == id }) { return entry }
         }
         return nil
     }
 
-    var selectedChangeSet: ChangeSet? {
-        guard let selection else { return nil }
-        return changeSets.first { cs in cs.files.contains { $0.id == selection } }
+    // MARK: - Tabs
+
+    /// Shows `entryID` in a tab: the one it is already in, else the preview tab (retargeted),
+    /// else a new tab after the active one. `pin` keeps the tab open past the next preview.
+    func open(_ entryID: FileEntry.ID, pin: Bool) {
+        if let index = tabs.firstIndex(where: { $0.entryID == entryID }) {
+            if pin { tabs[index].isPreview = false }
+            activeTabID = tabs[index].id
+        } else if !pin, let index = tabs.firstIndex(where: \.isPreview) {
+            tabs[index].entryID = entryID
+            activeTabID = tabs[index].id
+        } else {
+            let tab = DiffTab(entryID: entryID, isPreview: !pin)
+            let position = activeTabID.flatMap { id in tabs.firstIndex { $0.id == id } }.map { $0 + 1 } ?? tabs.count
+            tabs.insert(tab, at: position)
+            activeTabID = tab.id
+        }
+        if selection != entryID { selection = entryID }
+    }
+
+    func activateTab(_ id: DiffTab.ID) {
+        guard tabs.contains(where: { $0.id == id }) else { return }
+        activeTabID = id
+    }
+
+    /// Keeps a preview tab open.
+    func pinTab(_ id: DiffTab.ID) {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        tabs[index].isPreview = false
+    }
+
+    func pinActiveTab() {
+        if let activeTabID { pinTab(activeTabID) }
+    }
+
+    /// Closes a tab; when it was active, the one after it (or before it) takes over.
+    func closeTab(_ id: DiffTab.ID) {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        tabs.remove(at: index)
+        if activeTabID == id {
+            activeTabID = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)].id
+            if activeTabID == nil { selection = nil }
+        }
+    }
+
+    func closeActiveTab() {
+        if let activeTabID { closeTab(activeTabID) }
+    }
+
+    func closeOtherTabs(than id: DiffTab.ID) {
+        tabs.removeAll { $0.id != id }
+        activeTabID = id
+    }
+
+    func selectNextTab() { stepTab(by: 1) }
+    func selectPreviousTab() { stepTab(by: -1) }
+
+    private func stepTab(by delta: Int) {
+        guard !tabs.isEmpty, let current = tabs.firstIndex(where: { $0.id == activeTabID }) else {
+            activeTabID = tabs.first?.id
+            return
+        }
+        activeTabID = tabs[(current + delta + tabs.count) % tabs.count].id
+    }
+
+    /// Drops tabs whose files are gone (a closed changeset).
+    private func removeTabs(for entries: [FileEntry]) {
+        let gone = Set(entries.map(\.id))
+        guard tabs.contains(where: { gone.contains($0.entryID) }) else { return }
+        let activeIndex = tabs.firstIndex { $0.id == activeTabID } ?? 0
+        let activeGone = activeTab.map { gone.contains($0.entryID) } ?? false
+        tabs.removeAll { gone.contains($0.entryID) }
+        if activeGone {
+            activeTabID = tabs.isEmpty ? nil : tabs[min(activeIndex, tabs.count - 1)].id
+        }
     }
 
     // MARK: - Ingest
@@ -65,7 +170,12 @@ final class AppModel {
         var firstEntry: FileEntry?
         for file in message.files {
             let entry = FileEntry(displayPath: file.displayPath, old: file.old, new: file.new)
-            if let replaced = changeSet.upsert(entry) { stopWatching(replaced) }
+            if let replaced = changeSet.upsert(entry) {
+                stopWatching(replaced)
+                // A tab showing the replaced file shows its replacement.
+                for index in tabs.indices where tabs[index].entryID == replaced.id { tabs[index].entryID = entry.id }
+                if selection == replaced.id { selection = entry.id }
+            }
             DiffLoader.load(entry)
             if watchedCount < Self.watcherLimit { startWatching(entry) }
             if firstEntry == nil { firstEntry = entry }
@@ -88,15 +198,15 @@ final class AppModel {
     /// (the app's own cache; never user files).
     func close(_ changeSet: ChangeSet) {
         guard let index = changeSets.firstIndex(where: { $0.id == changeSet.id }) else { return }
-        let wasSelected = changeSet.files.contains { $0.id == selection }
         changeSets.remove(at: index)
         for entry in changeSet.files { stopWatching(entry) }
+        removeTabs(for: changeSet.files)
         let fm = FileManager.default
         let root = DiffItPaths.snapshotsRoot().path
         for dir in changeSet.snapshotDirectories where dir.hasPrefix(root) {
             try? fm.removeItem(atPath: dir)
         }
-        if wasSelected {
+        if tabs.isEmpty {
             selection = changeSets.first?.orderedFiles.first?.id
         }
     }

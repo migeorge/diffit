@@ -36,6 +36,21 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     /// Reports block count / current block whenever either changes (toolbar indicator).
     var onNavigationChange: ((ChangeNavigationState) -> Void)?
 
+    /// Only the visible tab's pair publishes navigation state. Hidden tabs keep their views.
+    private(set) var isActive = false
+
+    func setActive(_ active: Bool) {
+        guard active != isActive else { return }
+        isActive = active
+        guard active else { return }
+        publishNavigation()
+        // Keyboard focus left in a now-hidden tab's pane or find field moves to this pair.
+        if let window, let responder = window.firstResponder as? NSView, !responder.isDescendant(of: self),
+           responder is DiffTextView || responder.enclosingView(ofType: FindBarContainer.self) != nil {
+            window.makeFirstResponder((focusedColumn ?? newColumn).textView)
+        }
+    }
+
     // MARK: - Setup
 
     override init(frame: NSRect) {
@@ -377,7 +392,19 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     }
 
     private func publishNavigation() {
+        guard isActive else { return }
         onNavigationChange?(ChangeNavigationState(current: currentBlock, count: changeBlocks.count,
                                                   currentIsMove: currentBlockIsMove))
+    }
+}
+
+private extension NSView {
+    func enclosingView<T: NSView>(ofType type: T.Type) -> T? {
+        var view: NSView? = self
+        while let current = view {
+            if let match = current as? T { return match }
+            view = current.superview
+        }
+        return nil
     }
 }

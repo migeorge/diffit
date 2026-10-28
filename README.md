@@ -54,7 +54,15 @@ diffit OLD NEW               # compare two files without git
 diffit /dev/null NEW         # an added file
 ```
 
-Files opened by one `git difftool` run are grouped as a changeset in the sidebar. Close a changeset with the ⓧ in its header or ⇧⌘W. The app stays running after you close the window so the next `git difftool` opens instantly.
+Files opened by one `git difftool` run are grouped as a changeset in the sidebar. Close a changeset with the ⓧ in its header or ⌥⌘W. The app stays running after you close the window so the next `git difftool` opens instantly.
+
+### Tabs
+
+Clicking a file in the sidebar previews it in a tab (its name in italics); the next file you click takes over that tab. Double-click a file, or a tab, to keep it open, and open as many as you like. Each tab keeps its own scroll position and find bar. ⌘W closes the active tab, ⌃Tab and ⌃⇧Tab move between tabs.
+
+### Find
+
+⌘F opens a find bar over both panes and searches the pane you last clicked (the changed side by default). Matches are highlighted as you type; ⌘G and ⇧⌘G step through them, ⌘E searches for the selection, Escape closes the bar. The current change block is outlined in the accent colour in both panes and in the marker strip.
 
 ### Keyboard
 
@@ -62,13 +70,18 @@ Files opened by one `git difftool` run are grouped as a changeset in the sidebar
 |---|---|
 | Next / previous change | ⌘↓ / ⌘↑ |
 | Next / previous file | ⌥⌘↓ / ⌥⌘↑ |
+| Find / find next / find previous | ⌘F / ⌘G / ⇧⌘G |
+| Use selection for find | ⌘E |
+| Close tab | ⌘W |
+| Next / previous tab | ⌃Tab / ⌃⇧Tab |
 | Bigger / smaller text | ⌘+ / ⌘− |
 | Toggle sidebar | ⌃⌘S |
 | Reload the selected file | ⌘R |
 | Reveal the working-tree file in Finder | ⇧⌘R |
 | Open the working-tree file in its default editor | ⇧⌘O |
 | Other end of the current moved block | ⇧⌘M |
-| Close changeset | ⇧⌘W |
+| Close changeset | ⌥⌘W |
+| Close window | ⇧⌘W |
 | Settings (font, size, tab width, highlights, moves, syntax colours) | ⌘, |
 
 Lines that moved unchanged to another place in the file are tinted violet at both ends instead of red and green; with such a block current, "Other End of Move" (⇧⌘M) jumps between the two. The detector can be switched off in Settings.

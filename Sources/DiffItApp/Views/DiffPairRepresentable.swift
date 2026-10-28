@@ -17,6 +17,7 @@ struct DiffPairRepresentable: NSViewRepresentable {
     let newPlaceholder: String?
     let oldHeader: PaneHeaderView.Content
     let newHeader: PaneHeaderView.Content
+    let isActive: Bool
     let font: NSFont
     let tabWidth: Int
     let intraLineHighlights: Bool
@@ -33,12 +34,12 @@ struct DiffPairRepresentable: NSViewRepresentable {
         let view = DiffPairView(frame: .zero)
         context.coordinator.view = view
         view.onNavigationChange = { state in AppModel.shared.changeNavigation = state }
-        AppModel.shared.activeNavigator = view
         return view
     }
 
     func updateNSView(_ view: DiffPairView, context: Context) {
         view.setHeaders(old: oldHeader, new: newHeader)
+        updateActivation(view)
         let key = Key(entryID: entryID, generation: generation, settingsVersion: settingsVersion)
         guard context.coordinator.lastKey != key else { return }
         let sameEntry = context.coordinator.lastKey?.entryID == entryID
@@ -49,7 +50,22 @@ struct DiffPairRepresentable: NSViewRepresentable {
         view.load(result, style: style, showChangeHatch: showChangeHatch, keepScroll: sameEntry,
                   lineMapping: sameEntry && contentChanged ? lineMapping : nil,
                   oldSyntax: oldSyntax, newSyntax: newSyntax)
-        if AppModel.shared.activeNavigator == nil { AppModel.shared.activeNavigator = view }
+    }
+
+    /// The visible tab's pair view is the navigator; a tab going hidden gives it up only if it
+    /// still holds it (the new tab may already have taken over, in either order).
+    private func updateActivation(_ view: DiffPairView) {
+        let model = AppModel.shared
+        if isActive {
+            if model.activeNavigator !== view { model.activeNavigator = view }
+            view.setActive(true)
+        } else if view.isActive {
+            view.setActive(false)
+            if model.activeNavigator === view {
+                model.activeNavigator = nil
+                model.changeNavigation = .none
+            }
+        }
     }
 
     static func dismantleNSView(_ view: DiffPairView, coordinator: Coordinator) {

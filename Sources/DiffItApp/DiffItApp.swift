@@ -19,9 +19,14 @@ struct DiffItApp: App {
                 Button("Remove Command Line Tool…") { CLIInstaller.shared.confirmRemove() }
                     .disabled(!CLIInstaller.shared.isPresent || CLIInstaller.shared.isBusy)
             }
-            CommandGroup(after: .saveItem) {
-                Button("Close Changeset") { AppModel.shared.closeSelectedChangeSet() }
+            // Replacing the group drops the system Close item, so ⌘W can close a tab.
+            CommandGroup(replacing: .saveItem) {
+                Button("Close Tab") { AppDelegate.closeTabOrWindow() }
+                    .keyboardShortcut("w", modifiers: .command)
+                Button("Close Window") { NSApp.keyWindow?.performClose(nil) }
                     .keyboardShortcut("w", modifiers: [.shift, .command])
+                Button("Close Changeset") { AppModel.shared.closeSelectedChangeSet() }
+                    .keyboardShortcut("w", modifiers: [.option, .command])
                     .disabled(AppModel.shared.changeSets.isEmpty)
                 Button("Reload") { AppModel.shared.reloadSelected() }
                     .keyboardShortcut("r", modifiers: .command)
@@ -82,6 +87,17 @@ struct DiffItApp: App {
                     NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
                 }
                 .keyboardShortcut("s", modifiers: [.control, .command])
+                Divider()
+            }
+            CommandGroup(before: .windowList) {
+                Button("Show Next Tab") { AppModel.shared.selectNextTab() }
+                    .keyboardShortcut(.tab, modifiers: .control)
+                    .disabled(AppModel.shared.tabs.count < 2)
+                Button("Show Previous Tab") { AppModel.shared.selectPreviousTab() }
+                    .keyboardShortcut(.tab, modifiers: [.control, .shift])
+                    .disabled(AppModel.shared.tabs.count < 2)
+                Button("Keep Tab Open") { AppModel.shared.pinActiveTab() }
+                    .disabled(AppModel.shared.activeTab?.isPreview != true)
                 Divider()
             }
         }

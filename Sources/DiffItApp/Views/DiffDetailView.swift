@@ -5,6 +5,8 @@ import SwiftUI
 struct DiffDetailView: View {
     @Environment(AppSettings.self) private var settings
     let entry: FileEntry
+    /// Whether this is the visible tab (the pair view then owns navigation and find).
+    let isActive: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -93,6 +95,7 @@ struct DiffDetailView: View {
                 newPlaceholder: entry.new == nil ? "Deleted" : nil,
                 oldHeader: .init(label: oldLabel, count: entry.deletions, isLoading: entry.isLoading),
                 newHeader: .init(label: newLabel, count: entry.additions, isLoading: entry.isLoading),
+                isActive: isActive,
                 font: settings.font,
                 tabWidth: settings.tabWidth,
                 intraLineHighlights: settings.intraLineHighlights,

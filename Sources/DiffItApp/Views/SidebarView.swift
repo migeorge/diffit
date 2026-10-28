@@ -83,7 +83,7 @@ private struct FileRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Label(entry.fileName, systemImage: symbol)
+            Label(entry.fileName, systemImage: entry.systemImage)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 4)
@@ -95,16 +95,6 @@ private struct FileRow: View {
                     .help(entry.error ?? "")
             }
             DiffCounts(additions: entry.additions, deletions: entry.deletions)
-        }
-    }
-
-    private var symbol: String {
-        switch entry.status {
-        case .added: "doc.badge.plus"
-        case .deleted: "trash"   // there is no doc.badge.minus symbol
-        case .modified: "doc.text"
-        case .binary: "doc.zipper"
-        case .unreadable: "doc.questionmark"
         }
     }
 }

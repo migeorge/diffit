@@ -6,6 +6,19 @@ import DiffItProtocol
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
     private var ipcServer: IPCServer?
+    /// The diff window, so ⌘W can tell it apart from Settings.
+    private static weak var mainWindow: NSWindow?
+
+    /// ⌘W: closes the active tab in the diff window, or the key window when it is another
+    /// window (Settings) or no tab is open.
+    static func closeTabOrWindow() {
+        guard let key = NSApp.keyWindow else { return }
+        if key === mainWindow, AppModel.shared.activeTabID != nil {
+            AppModel.shared.closeActiveTab()
+        } else {
+            key.performClose(nil)
+        }
+    }
 
     /// Snapshot directories older than this are purged at launch.
     private static let snapshotMaxAge: TimeInterval = 7 * 24 * 3600
@@ -47,6 +60,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ipcServer?.stop()
     }
 
+    // MARK: - Sidebar double-click
+
+    /// A double-click on a sidebar row keeps its (preview) tab open. Detected from the window's
+    /// events rather than with a gesture on the row: a tap gesture on a List row stops the List
+    /// selecting on a single click. The sidebar's List is the only table view in the window.
+    private func handleDoubleClick(_ event: NSEvent) {
+        guard let window = event.window, window === self.window, let content = window.contentView,
+              let hit = content.hitTest(content.convert(event.locationInWindow, from: nil)),
+              hit.isInsideTableView else { return }
+        AppModel.shared.pinActiveTab()
+    }
+
     // MARK: - IPC
 
     private func startIPCServer(model: AppModel) {
@@ -80,12 +105,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let root = MainView().environment(AppModel.shared).environment(AppSettings.shared)
             let hosting = NSHostingController(rootView: root)
             hosting.sceneBridgingOptions = [.toolbars, .title]
-            let window = NSWindow(
+            let window = MainWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 1440, height: 900),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
+            window.onDoubleClick = { [weak self] event in self?.handleDoubleClick(event) }
             window.contentViewController = hosting
             window.toolbarStyle = .unified
             window.tabbingMode = .disallowed
@@ -98,7 +124,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.center()
             window.setFrameAutosaveName("DiffItMain")
             self.window = window
+            Self.mainWindow = window
         }
         window?.makeKeyAndOrderFront(nil)
+    }
+}
+
+private extension NSView {
+    var isInsideTableView: Bool {
+        var view: NSView? = self
+        while let current = view {
+            if current is NSTableView { return true }
+            view = current.superview
+        }
+        return false
+    }
+}
+
+/// The diff window; reports double-clicks after dispatching them as usual.
+final class MainWindow: NSWindow {
+    var onDoubleClick: ((NSEvent) -> Void)?
+
+    /// Watched on mouse-down: a table view tracks the mouse itself from its `mouseDown`, so the
+    /// matching mouse-up never comes through `sendEvent` (nor through a local event monitor).
+    override func sendEvent(_ event: NSEvent) {
+        super.sendEvent(event)
+        if event.type == .leftMouseDown, event.clickCount == 2 { onDoubleClick?(event) }
     }
 }
