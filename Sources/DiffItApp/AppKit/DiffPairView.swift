@@ -79,7 +79,10 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     private func updateViewportIndicator() {
         let clip = newColumn.clipView.bounds
         let height = max(newColumn.textView.frame.height, 1)
-        markerStrip.viewport = (clip.minY / height)...min(1, clip.maxY / height)
+        // The clip view overshoots both ends while rubber-banding; keep the range inside 0...1 and ordered.
+        let lower = min(max(clip.minY / height, 0), 1)
+        let upper = min(max(clip.maxY / height, lower), 1)
+        markerStrip.viewport = lower...upper
     }
 
     @available(*, unavailable)
@@ -132,6 +135,8 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         guard let result else {
             oldColumn.install(.empty(side: .old), font: style.font, showChangeHatch: showChangeHatch)
             newColumn.install(.empty(side: .new), font: style.font, showChangeHatch: showChangeHatch)
+            oldColumn.minimumDocumentWidth = 0
+            newColumn.minimumDocumentWidth = 0
             changeBlocks = []
             newLineOfRow = []
             moveIDOfRow = []
@@ -145,6 +150,9 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
                           font: style.font, showChangeHatch: showChangeHatch)
         newColumn.install(DiffTextBuilder.build(result, side: .new, style: style, syntax: newSyntax),
                           font: style.font, showChangeHatch: showChangeHatch)
+        let documentWidth = max(oldColumn.textView.contentSize.width, newColumn.textView.contentSize.width)
+        oldColumn.minimumDocumentWidth = documentWidth
+        newColumn.minimumDocumentWidth = documentWidth
         changeBlocks = result.changeBlocks
         markerStrip.blocks = result.changeBlocks.map { ($0, Self.blockKind(result.rows[$0])) }
         markerStrip.rowCount = result.rows.count

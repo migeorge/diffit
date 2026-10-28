@@ -12,6 +12,13 @@ final class DiffColumnView: NSView {
     /// Called with the clip view's new bounds origin after the user (or sync) scrolls this pane.
     var onScroll: ((DiffColumnView) -> Void)?
 
+    /// The widest document of the pair, so both panes need a horizontal scroller together or not
+    /// at all: a legacy (non-overlay) horizontal scroller in one pane only would shorten that
+    /// pane's clip view and give the two panes different scroll ranges.
+    var minimumDocumentWidth: CGFloat = 0 {
+        didSet { if minimumDocumentWidth != oldValue { fitTextViewToClip() } }
+    }
+
     private var observers: [NSObjectProtocol] = []
 
     // MARK: - Setup
@@ -29,6 +36,7 @@ final class DiffColumnView: NSView {
         // background is needed; on macOS 26 enabling it adds a visual-effect view.
         scrollView.drawsBackground = false
         scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.contentView = PaneClipView()
         scrollView.documentView = textView
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         gutter.translatesAutoresizingMaskIntoConstraints = false
@@ -106,7 +114,8 @@ final class DiffColumnView: NSView {
         let clip = scrollView.contentView.bounds.size
         guard clip.width > 0 else { return }
         let content = textView.contentSize
-        let size = NSSize(width: max(clip.width, content.width), height: max(clip.height, content.height))
+        let size = NSSize(width: max(clip.width, content.width, minimumDocumentWidth),
+                          height: max(clip.height, content.height))
         if textView.frame.size != size { textView.setFrameSize(size) }
     }
 
