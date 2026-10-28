@@ -3,7 +3,7 @@ BUNDLE   = dev.diffit.app
 BUILD    = .build/release
 UNIVERSAL = .build/apple/Products/Release
 APPDIR   = build/$(APP).app
-VERSION ?= 0.2.0
+VERSION ?= 0.2.1
 DIST     = build/$(APP)-$(VERSION).zip
 
 .PHONY: build app bundle dist install test run
