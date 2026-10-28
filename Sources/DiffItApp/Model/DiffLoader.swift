@@ -26,6 +26,7 @@ enum DiffLoader {
         var newSize: Int?
         /// A live file is missing (mid-save or deleted): keep the last diff, show the error.
         var keepPrevious = false
+        var lineMapping: [Int]?
     }
 
     static func load(_ entry: FileEntry) {
@@ -35,8 +36,9 @@ enum DiffLoader {
         }
         entry.isLoading = true
         let old = entry.old, new = entry.new
+        let previousNewLines = entry.result?.newLines
         Task.detached(priority: .userInitiated) {
-            let outcome = compute(old: old, new: new)
+            let outcome = compute(old: old, new: new, previousNewLines: previousNewLines)
             await MainActor.run { apply(outcome, to: entry) }
         }
     }
@@ -50,6 +52,7 @@ enum DiffLoader {
             return
         }
         entry.result = outcome.result
+        entry.newLineMapping = outcome.lineMapping
         if let status = outcome.status { entry.status = status }
         entry.intraLineDisabled = outcome.intraLineDisabled
         entry.oldSize = outcome.oldSize
@@ -62,7 +65,7 @@ enum DiffLoader {
         }
     }
 
-    private nonisolated static func compute(old: FileSide?, new: FileSide?) -> Outcome {
+    private nonisolated static func compute(old: FileSide?, new: FileSide?, previousNewLines: [String]?) -> Outcome {
         let oldContent = old.map(read), newContent = new.map(read)
         var outcome = Outcome(intraLineDisabled: false, oldSize: oldContent?.size, newSize: newContent?.size)
         outcome.error = oldContent?.error ?? newContent?.error
@@ -79,7 +82,11 @@ enum DiffLoader {
             options.intraLine = false
             outcome.intraLineDisabled = true
         }
-        outcome.result = DiffEngine.diff(old: oldText, new: newText, options: options)
+        let result = DiffEngine.diff(old: oldText, new: newText, options: options)
+        outcome.result = result
+        if let previousNewLines {
+            outcome.lineMapping = DiffEngine.lineMapping(from: previousNewLines, to: result.newLines)
+        }
         return outcome
     }
 

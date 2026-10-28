@@ -81,13 +81,19 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         newColumn.placeholder = new
     }
 
-    /// Rebuilds both panes. The first visible row is preserved across reloads (rows above may have shifted).
-    func load(_ result: DiffResult?, style: DiffTextBuilder.Style, showChangeHatch: Bool, keepScroll: Bool) {
+    /// New-side line index of each row of the last loaded result, for content-based scroll restore.
+    private var newLineOfRow: [Int?] = []
+
+    /// Rebuilds both panes. With `keepScroll` the row at the top stays in view: by content when
+    /// `lineMapping` says where the previous generation's lines went, otherwise by row index.
+    func load(_ result: DiffResult?, style: DiffTextBuilder.Style, showChangeHatch: Bool, keepScroll: Bool,
+              lineMapping: [Int]? = nil) {
         let anchor = keepScroll ? newColumn.firstVisibleLine() : nil
         guard let result else {
             oldColumn.install(.empty(side: .old), font: style.font, showChangeHatch: showChangeHatch)
             newColumn.install(.empty(side: .new), font: style.font, showChangeHatch: showChangeHatch)
             changeBlocks = []
+            newLineOfRow = []
             currentBlock = nil
             publishNavigation()
             return
@@ -95,9 +101,11 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         oldColumn.install(DiffTextBuilder.build(result, side: .old, style: style), font: style.font, showChangeHatch: showChangeHatch)
         newColumn.install(DiffTextBuilder.build(result, side: .new, style: style), font: style.font, showChangeHatch: showChangeHatch)
         changeBlocks = result.changeBlocks
+        let mappedRow = anchor.flatMap { rowFollowingContent(from: $0.line, mapping: lineMapping, rows: result.rows) }
+        newLineOfRow = result.rows.map(\.newLine)
         if let currentBlock, !changeBlocks.indices.contains(currentBlock) { self.currentBlock = nil }
         if let anchor {
-            let line = min(anchor.line, max(0, result.rows.count - 1))
+            let line = mappedRow ?? min(anchor.line, max(0, result.rows.count - 1))
             newColumn.scroll(toLine: line, offset: anchor.offset)
             mirrorScroll(from: newColumn)
             updateCurrentBlock()
@@ -107,6 +115,33 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             currentBlock = nil
         }
         publishNavigation()
+    }
+
+    /// The row in `rows` showing the same new-side content as previous row `row`, via `mapping`.
+    /// Falls back to the next surviving line when that line itself was removed.
+    private func rowFollowingContent(from row: Int, mapping: [Int]?, rows: [DiffRow]) -> Int? {
+        guard let mapping, !newLineOfRow.isEmpty else { return nil }
+        var previousRow = row
+        while previousRow < newLineOfRow.count, newLineOfRow[previousRow] == nil { previousRow += 1 }
+        guard previousRow < newLineOfRow.count, var line = newLineOfRow[previousRow] else { return nil }
+        let rowsSkipped = previousRow - row
+        var target = -1
+        while line < mapping.count {
+            if mapping[line] >= 0 { target = mapping[line]; break }
+            line += 1
+        }
+        guard target >= 0 else { return nil }
+        // New-side lines increase monotonically along rows; binary search over rows with a line.
+        var low = 0, high = rows.count - 1
+        while low <= high {
+            let mid = (low + high) / 2
+            var probe = mid
+            while probe <= high, rows[probe].newLine == nil { probe += 1 }
+            guard probe <= high, let value = rows[probe].newLine else { high = mid - 1; continue }
+            if value == target { return max(0, probe - rowsSkipped) }
+            if value < target { low = probe + 1 } else { high = mid - 1 }
+        }
+        return nil
     }
 
     // MARK: - Scroll sync

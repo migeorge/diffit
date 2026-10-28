@@ -7,6 +7,8 @@ struct DiffPairRepresentable: NSViewRepresentable {
     let entryID: FileEntry.ID
     let generation: Int
     let result: DiffResult?
+    /// Previous generation's new-side lines → current (see `FileEntry.newLineMapping`).
+    let lineMapping: [Int]?
     /// Centred label for a side with no file at all ("No original", "Deleted").
     let oldPlaceholder: String?
     let newPlaceholder: String?
@@ -34,10 +36,12 @@ struct DiffPairRepresentable: NSViewRepresentable {
         let key = Key(entryID: entryID, generation: generation, settingsVersion: settingsVersion)
         guard context.coordinator.lastKey != key else { return }
         let sameEntry = context.coordinator.lastKey?.entryID == entryID
+        let contentChanged = context.coordinator.lastKey?.generation != generation
         context.coordinator.lastKey = key
         let style = DiffTextBuilder.Style(font: font, tabWidth: tabWidth, intraLineHighlights: intraLineHighlights)
         view.setPlaceholders(old: oldPlaceholder, new: newPlaceholder)
-        view.load(result, style: style, showChangeHatch: showChangeHatch, keepScroll: sameEntry)
+        view.load(result, style: style, showChangeHatch: showChangeHatch, keepScroll: sameEntry,
+                  lineMapping: sameEntry && contentChanged ? lineMapping : nil)
         if AppModel.shared.activeNavigator == nil { AppModel.shared.activeNavigator = view }
     }
 

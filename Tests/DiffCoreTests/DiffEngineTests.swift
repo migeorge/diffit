@@ -59,3 +59,21 @@ import Testing
         #expect(!DiffEngine.isProbablyBinary(late), "only the first 8 KiB is inspected")
     }
 }
+
+@Suite struct LineMappingTests {
+    @Test func mapsSurvivingLinesAndMarksRemoved() {
+        let m = DiffEngine.lineMapping(from: ["a", "b", "c"], to: ["x", "a", "c"])
+        #expect(m == [1, -1, 2])
+    }
+
+    @Test func prependShiftsEverything() {
+        let from = (0..<10).map { "row \($0)" }
+        let m = DiffEngine.lineMapping(from: from, to: ["new 1", "new 2"] + from)
+        #expect(m == Array(2..<12))
+    }
+
+    @Test func emptyInputs() {
+        #expect(DiffEngine.lineMapping(from: [], to: ["a"]) == [])
+        #expect(DiffEngine.lineMapping(from: ["a"], to: []) == [-1])
+    }
+}

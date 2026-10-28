@@ -4,8 +4,9 @@ import Foundation
 ///
 /// Editors and agents usually save atomically (write a temp file, rename it over the original),
 /// which fires `.delete`/`.rename` on the inode we hold. The watcher then closes the descriptor
-/// and reopens the path, retrying briefly until the new file appears; if it never does, the
-/// `onMissing` callback fires and watching stops.
+/// and reopens the path, retrying quickly at first; if the file is still gone after two seconds
+/// `onMissing` fires once and the watcher keeps polling the path slowly until it comes back
+/// (then `onChange` fires) or `stop()` is called.
 final class FileWatcher: @unchecked Sendable {
     let path: String
 
@@ -14,6 +15,7 @@ final class FileWatcher: @unchecked Sendable {
     private var descriptor: Int32 = -1
     private var debounce: DispatchWorkItem?
     private var reopenAttempts = 0
+    private var reportedMissing = false
     private var stopped = false
 
     private let onChange: @Sendable () -> Void
@@ -21,7 +23,8 @@ final class FileWatcher: @unchecked Sendable {
 
     private static let debounceInterval: DispatchTimeInterval = .milliseconds(120)
     private static let reopenInterval: DispatchTimeInterval = .milliseconds(50)
-    private static let maxReopenAttempts = 40     // 40 × 50 ms = 2 s
+    private static let maxReopenAttempts = 40     // 40 × 50 ms = 2 s, then slow polling
+    private static let slowReopenInterval: DispatchTimeInterval = .seconds(1)
     private static let sharedQueue = DispatchQueue(label: "dev.diffit.filewatcher", qos: .userInitiated)
 
     /// Callbacks run on the watcher queue; hop to the main actor in the caller.
@@ -70,6 +73,7 @@ final class FileWatcher: @unchecked Sendable {
         source.resume()
         self.source = source
         reopenAttempts = 0
+        reportedMissing = false
         return true
     }
 
@@ -103,16 +107,20 @@ final class FileWatcher: @unchecked Sendable {
 
     private func reopenLater() {
         guard !stopped else { return }
-        queue.asyncAfter(deadline: .now() + Self.reopenInterval) { [weak self] in
+        let gaveUp = reopenAttempts >= Self.maxReopenAttempts
+        let delay = gaveUp ? Self.slowReopenInterval : Self.reopenInterval
+        queue.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self, !self.stopped, self.source == nil else { return }
             if self.arm() {
                 self.scheduleChange()
-            } else if self.reopenAttempts < Self.maxReopenAttempts {
-                self.reopenAttempts += 1
-                self.reopenLater()
-            } else {
+                return
+            }
+            self.reopenAttempts += 1
+            if self.reopenAttempts >= Self.maxReopenAttempts, !self.reportedMissing {
+                self.reportedMissing = true
                 self.onMissing()
             }
+            self.reopenLater()
         }
     }
 

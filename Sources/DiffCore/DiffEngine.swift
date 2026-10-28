@@ -34,6 +34,18 @@ public enum DiffEngine {
         )
     }
 
+    /// For each line of `from`, the index of the same line in `to`, or -1 when it has no
+    /// counterpart. Used to keep a viewport on the same content when a file is reloaded.
+    public static func lineMapping(from: [String], to: [String], options: DiffOptions = .init()) -> [Int] {
+        var interner = Interner<String>()
+        let a = interner.intern(from), b = interner.intern(to)
+        var mapping = [Int](repeating: -1, count: from.count)
+        for case .equal(let old, let new) in PatienceDiff.diff(a, b, myersMaxCost: options.myersMaxCost) {
+            mapping[old] = new
+        }
+        return mapping
+    }
+
     /// Line-level edit script over interned ids. Exposed for tests.
     public static func diffLines(_ old: [Int32], _ new: [Int32], options: DiffOptions = .init()) -> [DiffOp] {
         PatienceDiff.diff(old, new, myersMaxCost: options.myersMaxCost)

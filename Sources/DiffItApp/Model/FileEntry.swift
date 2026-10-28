@@ -27,6 +27,9 @@ final class FileEntry: Identifiable {
 
     /// Loader bookkeeping: a reload arrived while one was running.
     var reloadRequested = false
+    /// For the latest reload: each new-side line index of the previous generation → its index
+    /// now, or -1. Lets the panes keep the same content in view.
+    @ObservationIgnored var newLineMapping: [Int]?
 
     /// Watchers for the live sides; empty until `AppModel` starts them.
     @ObservationIgnored var watchers: [FileWatcher] = []

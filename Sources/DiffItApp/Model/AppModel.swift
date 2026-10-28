@@ -104,20 +104,14 @@ final class AppModel {
     // MARK: - Watching
 
     /// Starts one watcher per live side. A change reloads the diff; a vanished file keeps the
-    /// last diff, surfaces an error, and drops the entry's watchers so that a later Reload (or
-    /// reselecting the file) re-arms them against the recreated file.
+    /// last diff and surfaces an error while the watcher keeps polling for its return.
     private func startWatching(_ entry: FileEntry) {
         guard entry.watchers.isEmpty else { return }
         for side in entry.liveSides {
             let watcher = FileWatcher(
                 path: side.path,
                 onChange: { Task { @MainActor in DiffLoader.load(entry) } },
-                onMissing: {
-                    Task { @MainActor in
-                        entry.error = "File removed: \(side.path)"
-                        AppModel.shared.stopWatching(entry)
-                    }
-                }
+                onMissing: { Task { @MainActor in entry.error = "File removed: \(side.path)" } }
             )
             if watcher.start() {
                 entry.watchers.append(watcher)
@@ -165,7 +159,7 @@ final class AppModel {
         selection = files[next].id
     }
 
-    /// Reloads the selected file, re-arming its watchers if they gave up (e.g. after a delete).
+    /// Reloads the selected file, starting its watchers if it is over the budget and unwatched.
     func reloadSelected() {
         guard let entry = selectedEntry else { return }
         if !entry.isWatched, !entry.liveSides.isEmpty, watchedCount < Self.watcherLimit {
