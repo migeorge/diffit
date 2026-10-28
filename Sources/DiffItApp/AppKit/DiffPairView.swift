@@ -1,5 +1,6 @@
 import AppKit
 import DiffCore
+import SyntaxHighlight
 
 /// Side-by-side panes in a split view with mirrored vertical scrolling.
 /// Original on the left, changed on the right.
@@ -126,7 +127,7 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     /// Rebuilds both panes. With `keepScroll` the row at the top stays in view: by content when
     /// `lineMapping` says where the previous generation's lines went, otherwise by row index.
     func load(_ result: DiffResult?, style: DiffTextBuilder.Style, showChangeHatch: Bool, keepScroll: Bool,
-              lineMapping: [Int]? = nil) {
+              lineMapping: [Int]? = nil, oldSyntax: [HighlightSpan] = [], newSyntax: [HighlightSpan] = []) {
         let anchor = keepScroll ? newColumn.firstVisibleLine() : nil
         guard let result else {
             oldColumn.install(.empty(side: .old), font: style.font, showChangeHatch: showChangeHatch)
@@ -140,8 +141,10 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             publishNavigation()
             return
         }
-        oldColumn.install(DiffTextBuilder.build(result, side: .old, style: style), font: style.font, showChangeHatch: showChangeHatch)
-        newColumn.install(DiffTextBuilder.build(result, side: .new, style: style), font: style.font, showChangeHatch: showChangeHatch)
+        oldColumn.install(DiffTextBuilder.build(result, side: .old, style: style, syntax: oldSyntax),
+                          font: style.font, showChangeHatch: showChangeHatch)
+        newColumn.install(DiffTextBuilder.build(result, side: .new, style: style, syntax: newSyntax),
+                          font: style.font, showChangeHatch: showChangeHatch)
         changeBlocks = result.changeBlocks
         markerStrip.blocks = result.changeBlocks.map { ($0, Self.blockKind(result.rows[$0])) }
         markerStrip.rowCount = result.rows.count

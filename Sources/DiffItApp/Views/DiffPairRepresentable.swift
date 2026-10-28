@@ -1,5 +1,6 @@
 import SwiftUI
 import DiffCore
+import SyntaxHighlight
 
 /// Hosts `DiffPairView` in SwiftUI. Inputs are plain values so SwiftUI tracks them; the panes are
 /// rebuilt only when the entry, its generation, or the text settings change.
@@ -9,6 +10,8 @@ struct DiffPairRepresentable: NSViewRepresentable {
     let result: DiffResult?
     /// Previous generation's new-side lines → current (see `FileEntry.newLineMapping`).
     let lineMapping: [Int]?
+    let oldSyntax: [HighlightSpan]
+    let newSyntax: [HighlightSpan]
     /// Centred label for a side with no file at all ("No original", "Deleted").
     let oldPlaceholder: String?
     let newPlaceholder: String?
@@ -41,7 +44,8 @@ struct DiffPairRepresentable: NSViewRepresentable {
         let style = DiffTextBuilder.Style(font: font, tabWidth: tabWidth, intraLineHighlights: intraLineHighlights)
         view.setPlaceholders(old: oldPlaceholder, new: newPlaceholder)
         view.load(result, style: style, showChangeHatch: showChangeHatch, keepScroll: sameEntry,
-                  lineMapping: sameEntry && contentChanged ? lineMapping : nil)
+                  lineMapping: sameEntry && contentChanged ? lineMapping : nil,
+                  oldSyntax: oldSyntax, newSyntax: newSyntax)
         if AppModel.shared.activeNavigator == nil { AppModel.shared.activeNavigator = view }
     }
 

@@ -15,6 +15,7 @@ Native macOS git difftool for reviewing code changes, especially ones made by AI
 - `Sources/DiffCore` — pure Swift diff engine (patience + Myers, side-by-side rows, intra-line). No AppKit. Fully unit-tested.
 - `Sources/DiffItProtocol` — JSON-over-Unix-socket messages shared by CLI and app. Foundation only.
 - `Sources/diffit` — the CLI git invokes once per file.
+- `Sources/SyntaxHighlight` — tree-sitter grammars (SwiftPM deps pinned by commit) + vendored `highlights.scm` queries → `[HighlightSpan]` per line. `Sources/TreeSitterFish` and `Sources/TreeSitterScanners` are generated C vendored by `Scripts/vendor-queries.py`; never hand-edit them.
 - `Sources/DiffItApp` — the app. `Model/` (`@Observable`, `@MainActor`), `Views/` (SwiftUI), `AppKit/` (text panes, ruler, theme).
 - `Tests/` — Swift Testing (`import Testing`). Run `make test` before every commit touching `DiffCore` or `DiffItProtocol`.
 

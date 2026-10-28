@@ -59,9 +59,13 @@ Files opened by one `git difftool` run are grouped as a changeset in the sidebar
 | Open the working-tree file in its default editor | ⇧⌘O |
 | Other end of the current moved block | ⇧⌘M |
 | Close changeset | ⇧⌘W |
-| Settings (font, size, tab width, highlights, move detection) | ⌘, |
+| Settings (font, size, tab width, highlights, moves, syntax colours) | ⌘, |
 
 Lines that moved unchanged to another place in the file are tinted violet at both ends instead of red and green; with such a block current, "Other End of Move" (⇧⌘M) jumps between the two. The detector can be switched off in Settings.
+
+### Syntax highlighting
+
+Code is coloured with [tree-sitter](https://tree-sitter.github.io/) grammars bundled into the app; no network, no plug-ins. The language comes from the file extension (or a `#!` line): Go, Python, Bash/zsh, fish, Markdown, Swift, C, C++, Rust, JSON, YAML, TOML, JavaScript, TypeScript/TSX, HTML, CSS, Ruby, Java, Kotlin, Lua, Dockerfile, Objective-C, Haskell, Elixir, SQL, PHP, Scala and XML (including plists and storyboards). Colours follow Xcode's default theme and can be switched off in Settings.
 
 Vertical scrolling is synchronised between the panes; horizontal scrolling is independent. Text in both panes is selectable and searchable with the standard Find bar.
 
@@ -71,6 +75,7 @@ Vertical scrolling is synchronised between the panes; horizontal scrolling is in
 - The app diffs with a patience algorithm (Myers fallback) in `DiffCore`, builds side-by-side rows, and refines modified lines at the word level.
 - Each pane is an `NSTextView` with every row pinned to the same height, so row alignment and scroll sync are plain arithmetic. 50 000-line files open in well under a second.
 - A kqueue watcher per working-tree file reloads the diff on write, atomic save, or rename.
+- Syntax colours are computed with the diff, off the main thread: each side is parsed by its tree-sitter grammar and the grammar's own `highlights.scm` is run over the tree. Captures are folded onto a dozen token classes and applied as plain attributed-string colours, so the panes stay the same fixed-height `NSTextView`s.
 
 ## Build from source
 
@@ -81,8 +86,10 @@ make app             # assemble build/DiffIt.app
 make run             # launch it
 ```
 
-Layout: `Sources/DiffCore` (diff engine, no AppKit), `Sources/DiffItProtocol` (socket messages), `Sources/diffit` (CLI), `Sources/DiffItApp` (app), `Tests/`.
+Layout: `Sources/DiffCore` (diff engine, no AppKit), `Sources/DiffItProtocol` (socket messages), `Sources/diffit` (CLI), `Sources/SyntaxHighlight` (tree-sitter grammars → coloured spans), `Sources/DiffItApp` (app), `Tests/`.
+
+Grammars are SwiftPM dependencies pinned by commit in `Package.swift`; `Sources/TreeSitterFish` and `Sources/TreeSitterScanners` hold the few generated C files upstream does not package. After bumping a grammar, run `Scripts/vendor-queries.py` to refresh the bundled highlight queries and scanners.
 
 ## Not in v1
 
-Editing or merging, three-way diffs, syntax highlighting, soft wrap, image diffs.
+Editing or merging, three-way diffs, soft wrap, image diffs.

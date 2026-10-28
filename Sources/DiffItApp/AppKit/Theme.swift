@@ -1,4 +1,5 @@
 import AppKit
+import SyntaxHighlight
 import DiffCore
 
 /// Colour tokens for the diff panes. Every colour is appearance-aware.
@@ -18,6 +19,24 @@ enum Theme {
     // Gutter cells use a lighter version of the row tint.
     static let removedGutter = dynamic(light: hex(0xFFF2F2), dark: rgba(255, 90, 90, 0.10))
     static let addedGutter = dynamic(light: hex(0xF0FFF3), dark: rgba(80, 220, 120, 0.10))
+
+    // MARK: Syntax
+
+    /// Token colours after Xcode's default theme, chosen to stay legible over the diff tints.
+    static func syntaxColor(_ kind: TokenKind) -> NSColor {
+        switch kind {
+        case .keyword, .tag, .heading: return dynamic(light: hex(0x9B2393), dark: hex(0xFC5FA3))
+        case .function: return dynamic(light: hex(0x326D74), dark: hex(0x67B7A4))
+        case .type: return dynamic(light: hex(0x0B4F79), dark: hex(0x5DD8FF))
+        case .string, .codeSpan: return dynamic(light: hex(0xC41A16), dark: hex(0xFC6A5D))
+        case .escape, .attribute: return dynamic(light: hex(0x947100), dark: hex(0xE0A050))
+        case .comment: return dynamic(light: hex(0x6B7A88), dark: hex(0x7F8C98))
+        case .number, .constant, .label: return dynamic(light: hex(0x1C00CF), dark: hex(0xD0BF69))
+        case .property: return dynamic(light: hex(0x6C36A5), dark: hex(0xA167E6))
+        case .link: return dynamic(light: hex(0x0E5FD8), dark: hex(0x6699FF))
+        case .strong, .emphasis: return .labelColor
+        }
+    }
 
     /// Lines that moved elsewhere unchanged: one hue on both sides.
     static let movedLine = dynamic(light: hex(0xECE8FF), dark: rgba(150, 130, 255, 0.18))

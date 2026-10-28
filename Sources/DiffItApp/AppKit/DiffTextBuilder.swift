@@ -1,5 +1,6 @@
 import AppKit
 import DiffCore
+import SyntaxHighlight
 
 /// Builds the per-side attributed string and line metadata from a `DiffResult`.
 enum DiffTextBuilder {
@@ -12,9 +13,11 @@ enum DiffTextBuilder {
         var lineHeight: CGFloat { DiffTextBuilder.lineHeight(for: font) }
     }
 
-    static func build(_ result: DiffResult, side: DiffSide, style: Style) -> DiffPaneContent {
+    static func build(_ result: DiffResult, side: DiffSide, style: Style,
+                      syntax: [HighlightSpan] = []) -> DiffPaneContent {
         let lines = side == .old ? result.oldLines : result.newLines
         let rows = result.rows
+        var rowOfLine = [Int](repeating: -1, count: lines.count)
 
         var joined = String()
         joined.reserveCapacity(lines.reduce(0) { $0 + $1.utf8.count } + rows.count)
@@ -38,6 +41,7 @@ enum DiffTextBuilder {
             moveIDs.append(sourceIndex == nil ? nil : row.moveID)
             sourceLineNumbers.append(sourceIndex.map { $0 + 1 })
             if let sourceIndex {
+                rowOfLine[sourceIndex] = rowIndex
                 let line = lines[sourceIndex]
                 joined.append(line)
                 offset += line.utf16.count
@@ -56,6 +60,7 @@ enum DiffTextBuilder {
         let strong = Theme.strongHighlight(side: side)
         let length = text.length
         text.beginEditing()
+        applySyntax(syntax, to: text, rowOfLine: rowOfLine, lineStarts: lineStarts, lines: lines, font: style.font)
         for (line, ranges) in highlights {
             let start = lineStarts[line]
             for range in ranges {
@@ -71,6 +76,30 @@ enum DiffTextBuilder {
                                isFiller: isFiller, moveIDs: moveIDs, sourceLineNumbers: sourceLineNumbers,
                                changeBlocks: result.changeBlocks, lineHeight: style.lineHeight,
                                textWidth: widestLine(lines, style: style))
+    }
+
+    // MARK: - Syntax colours
+
+    private static func applySyntax(_ spans: [HighlightSpan], to text: NSMutableAttributedString, rowOfLine: [Int],
+                                    lineStarts: [Int], lines: [String], font: NSFont) {
+        guard !spans.isEmpty else { return }
+        let length = text.length
+        lazy var bold = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
+        for span in spans {
+            guard rowOfLine.indices.contains(span.line) else { continue }
+            let row = rowOfLine[span.line]
+            guard row >= 0 else { continue }
+            let lineLength = lines[span.line].utf16.count
+            let location = lineStarts[row] + span.range.lowerBound
+            let end = min(lineStarts[row] + min(span.range.upperBound, lineLength), length)
+            guard location < end else { continue }
+            let range = NSRange(location: location, length: end - location)
+            switch span.kind {
+            case .strong: text.addAttribute(.font, value: bold, range: range)
+            case .emphasis: text.addAttribute(.obliqueness, value: 0.18, range: range)
+            default: text.addAttribute(.foregroundColor, value: Theme.syntaxColor(span.kind), range: range)
+            }
+        }
     }
 
     // MARK: - Measuring

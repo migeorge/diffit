@@ -1,5 +1,6 @@
 import Foundation
 import DiffCore
+import SyntaxHighlight
 import DiffItProtocol
 
 enum FileStatus {
@@ -30,6 +31,9 @@ final class FileEntry: Identifiable {
     /// For the latest reload: each new-side line index of the previous generation → its index
     /// now, or -1. Lets the panes keep the same content in view.
     @ObservationIgnored var newLineMapping: [Int]?
+    /// Syntax colours per side, computed with the diff; empty when the language is unknown.
+    @ObservationIgnored var oldSyntax: [HighlightSpan] = []
+    @ObservationIgnored var newSyntax: [HighlightSpan] = []
 
     /// Watchers for the live sides; empty until `AppModel` starts them.
     @ObservationIgnored var watchers: [FileWatcher] = []

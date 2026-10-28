@@ -82,6 +82,8 @@ struct DiffDetailView: View {
                 generation: entry.generation,
                 result: entry.result,
                 lineMapping: entry.newLineMapping,
+                oldSyntax: entry.oldSyntax,
+                newSyntax: entry.newSyntax,
                 oldPlaceholder: entry.old == nil ? "No original" : nil,
                 newPlaceholder: entry.new == nil ? "Deleted" : nil,
                 font: settings.font,

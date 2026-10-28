@@ -1,4 +1,5 @@
 import SwiftUI
+import SyntaxHighlight
 
 /// The Settings window (⌘,). Every control writes straight through to `AppSettings`,
 /// which persists it and bumps `version` so the open panes re-render.
@@ -34,6 +35,9 @@ struct SettingsView: View {
                 Toggle("Highlight changed words within lines", isOn: $settings.intraLineHighlights)
                 Toggle("Detect moved blocks", isOn: $settings.detectMoves)
                     .onChange(of: settings.detectMoves) { AppModel.shared.reloadAll() }
+                Toggle("Syntax highlighting", isOn: $settings.syntaxHighlighting)
+                    .onChange(of: settings.syntaxHighlighting) { AppModel.shared.reloadAll() }
+                    .help("Colours code by language (\(SyntaxLanguage.allCases.count) languages, by file extension).")
                 Toggle("Hatch rows with no counterpart", isOn: $settings.showChangeHatch)
                 Toggle("Wrap long lines", isOn: $settings.wrapLines)
                     .disabled(true)

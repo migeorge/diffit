@@ -1,6 +1,7 @@
 import Foundation
 import DiffCore
 import DiffItProtocol
+import SyntaxHighlight
 
 /// Reads both sides of an entry off the main thread, diffs them, and publishes the result.
 /// Loads for one entry are coalesced: a request during a running load runs once more after it.
@@ -27,6 +28,8 @@ enum DiffLoader {
         /// A live file is missing (mid-save or deleted): keep the last diff, show the error.
         var keepPrevious = false
         var lineMapping: [Int]?
+        var oldSyntax: [HighlightSpan] = []
+        var newSyntax: [HighlightSpan] = []
     }
 
     static func load(_ entry: FileEntry) {
@@ -39,8 +42,11 @@ enum DiffLoader {
         let previousNewLines = entry.result?.newLines
         var options = DiffOptions()
         options.detectMoves = AppSettings.shared.detectMoves
+        let path = entry.displayPath
+        let highlight = AppSettings.shared.syntaxHighlighting
         Task.detached(priority: .userInitiated) {
-            let outcome = compute(old: old, new: new, previousNewLines: previousNewLines, options: options)
+            let outcome = compute(old: old, new: new, previousNewLines: previousNewLines, options: options,
+                                  path: path, highlight: highlight)
             await MainActor.run { apply(outcome, to: entry) }
         }
     }
@@ -55,6 +61,8 @@ enum DiffLoader {
         }
         entry.result = outcome.result
         entry.newLineMapping = outcome.lineMapping
+        entry.oldSyntax = outcome.oldSyntax
+        entry.newSyntax = outcome.newSyntax
         if let status = outcome.status { entry.status = status }
         entry.intraLineDisabled = outcome.intraLineDisabled
         entry.oldSize = outcome.oldSize
@@ -68,7 +76,7 @@ enum DiffLoader {
     }
 
     private nonisolated static func compute(old: FileSide?, new: FileSide?, previousNewLines: [String]?,
-                                            options: DiffOptions) -> Outcome {
+                                            options: DiffOptions, path: String, highlight: Bool) -> Outcome {
         let oldContent = old.map(read), newContent = new.map(read)
         var outcome = Outcome(intraLineDisabled: false, oldSize: oldContent?.size, newSize: newContent?.size)
         outcome.error = oldContent?.error ?? newContent?.error
@@ -89,6 +97,10 @@ enum DiffLoader {
         outcome.result = result
         if let previousNewLines {
             outcome.lineMapping = DiffEngine.lineMapping(from: previousNewLines, to: result.newLines)
+        }
+        if highlight, let language = SyntaxLanguage.detect(path: path, firstLine: result.newLines.first ?? result.oldLines.first) {
+            outcome.oldSyntax = SyntaxHighlighter.highlight(lines: result.oldLines, language: language)
+            outcome.newSyntax = SyntaxHighlighter.highlight(lines: result.newLines, language: language)
         }
         return outcome
     }
