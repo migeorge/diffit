@@ -34,14 +34,13 @@ private struct ChangeNavigationToolbar: View {
     var body: some View {
         let state = model.changeNavigation
         let hasEntry = model.selectedEntry != nil
-        // The group is drawn as one pill around its items; the text gets no padding of its own, so
-        // give it a fixed width that fits "No changes" and an inset from the pill's leading edge.
+        // The group is drawn as one pill around its items and the text gets no padding of its
+        // own, so it needs an inset from the pill's leading edge; the pill sizes to the text.
         Text(indicator(state))
             .monospacedDigit()
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .fixedSize()
-            .frame(width: 84, alignment: .trailing)
             .padding(.leading, 8)
             .opacity(hasEntry ? 1 : 0)
         Button {
