@@ -41,7 +41,7 @@ private struct ChangeNavigationToolbar: View {
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .fixedSize()
-            .padding(.leading, 8)
+            .padding(.leading, 10)
             .opacity(hasEntry ? 1 : 0)
         Button {
             model.activeNavigator?.previousChange()
