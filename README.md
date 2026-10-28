@@ -12,9 +12,21 @@ A native macOS `git difftool` for reading code changes, especially the ones an A
 
 ![DiffIt in light mode](docs/screenshot-light.png)
 
+## Download
+
+Requires macOS 26. Get `DiffIt-<version>.zip` from the [latest release](https://github.com/migeorge/diffit/releases/latest), unzip it, and drag `DiffIt.app` to /Applications. The build is universal (Apple silicon and Intel).
+
+The app is not signed with an Apple Developer ID, so macOS will refuse to open it at first ("Apple could not verify DiffIt is free of malware"). Safari and other browsers tag downloads with a quarantine attribute, and Gatekeeper rejects unsigned quarantined apps. Clear that attribute once, from Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/DiffIt.app
+```
+
+Then open the app normally. The `-r` matters: the command line tool that git runs lives inside the bundle and is checked separately, so clearing the app alone (for example with **Open Anyway** in System Settings ▸ Privacy & Security) can leave `git difftool` blocked. If you would rather not trust a downloaded binary, build it from source below; it takes about a minute.
+
 ## Install
 
-Requires macOS 26. Put `DiffIt.app` in /Applications, open it, and click **Install Command Line Tool** on the empty window (also in the DiffIt menu). That does two things:
+Open `DiffIt.app` and click **Install Command Line Tool** on the empty window (also in the DiffIt menu). That does two things:
 
 - links `~/.local/bin/diffit` to the tool inside the app bundle, for `diffit OLD NEW` from a terminal (add `~/.local/bin` to your `PATH` for that; git does not need it);
 - sets `diff.tool`, `difftool.diffit.cmd` and `difftool.prompt` in `~/.gitconfig`, with the tool's absolute path so it works from any shell or GUI git client.
@@ -29,7 +41,7 @@ cd diffit
 make install      # builds and puts DiffIt.app in /Applications
 ```
 
-Then open the app and click **Install Command Line Tool** as above.
+Then open the app and click **Install Command Line Tool** as above. A locally built app is not quarantined, so no `xattr` step is needed. `make dist` produces the universal zip that the releases are made from.
 
 ## Use
 

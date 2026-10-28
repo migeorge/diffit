@@ -1,15 +1,19 @@
 APP      = DiffIt
 BUNDLE   = dev.diffit.app
 BUILD    = .build/release
+UNIVERSAL = .build/apple/Products/Release
 APPDIR   = build/$(APP).app
 VERSION ?= 0.1.0
+DIST     = build/$(APP)-$(VERSION).zip
 
-.PHONY: build app install test run
+.PHONY: build app bundle dist install test run
 
 build:            ## release build of both executables
 	swift build -c release
 
-app: build        ## assemble build/DiffIt.app
+app: build bundle ## assemble build/DiffIt.app
+
+bundle:           ## assemble build/DiffIt.app from $(BUILD) (no compile)
 	rm -rf $(APPDIR)
 	mkdir -p $(APPDIR)/Contents/MacOS $(APPDIR)/Contents/Helpers $(APPDIR)/Contents/Resources
 	cp $(BUILD)/DiffItApp $(APPDIR)/Contents/MacOS/$(APP)
@@ -22,6 +26,13 @@ app: build        ## assemble build/DiffIt.app
 # The CLI symlink and the git config are the user's in-app Install Command Line Tool action.
 install: app      ## copy to /Applications
 	rm -rf /Applications/$(APP).app && cp -R $(APPDIR) /Applications/
+
+# Ad-hoc signed, not notarized: README explains clearing the quarantine flag after download.
+dist:             ## universal (arm64 + x86_64) DiffIt.app zipped for a GitHub release
+	swift build -c release --arch arm64 --arch x86_64
+	$(MAKE) bundle BUILD=$(UNIVERSAL)
+	rm -f $(DIST) && ditto -c -k --keepParent $(APPDIR) $(DIST)
+	@echo "wrote $(DIST)"
 
 # The Command Line Tools ship Swift Testing outside the default search path;
 # without Xcode, `swift test` needs to be told where it is (see DECISIONS.md).
