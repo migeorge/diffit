@@ -7,6 +7,9 @@ enum Theme {
     static let paneBackground = NSColor.textBackgroundColor
     static let gutterText = NSColor.secondaryLabelColor
     static let divider = NSColor.separatorColor
+    static let headerBackground = NSColor.windowBackgroundColor
+    /// Outline of the current change block in the panes (rules above and below, bar in the gutter).
+    static let currentBlockOutline = NSColor.controlAccentColor
 
     static let removedLine = dynamic(light: hex(0xFFE9E9), dark: rgba(255, 90, 90, 0.16))
     static let removedStrong = dynamic(light: hex(0xFFB8B8), dark: rgba(255, 90, 90, 0.42))

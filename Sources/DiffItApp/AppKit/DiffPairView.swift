@@ -9,12 +9,18 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     let newColumn = DiffColumnView(side: .new)
     private let splitView = NSSplitView()
     private let markerStrip = ChangeMarkerStrip()
+    private let oldHeader = PaneHeaderView(sign: "−", tint: .systemRed)
+    private let newHeader = PaneHeaderView(sign: "+", tint: .systemGreen)
+    private let headerDivider = HeaderDividerView()
 
     private(set) var changeBlocks: [Range<Int>] = []
     private(set) var currentBlock: Int? {
         didSet {
             guard currentBlock != oldValue else { return }
             markerStrip.currentBlock = currentBlock
+            let rows = currentBlock.map { changeBlocks[$0] }
+            oldColumn.setCurrentBlock(rows)
+            newColumn.setCurrentBlock(rows)
             publishNavigation()
         }
     }
@@ -37,16 +43,33 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         oldColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
         newColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
         markerStrip.translatesAutoresizingMaskIntoConstraints = false
+        for header in [oldHeader, headerDivider, newHeader] {
+            header.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(header)
+        }
         addSubview(splitView)
         addSubview(markerStrip)
+        // The headers are pinned to the columns' edges, so they follow the divider as it moves.
         NSLayoutConstraint.activate([
+            oldHeader.leadingAnchor.constraint(equalTo: leadingAnchor),
+            oldHeader.topAnchor.constraint(equalTo: topAnchor),
+            oldHeader.heightAnchor.constraint(equalToConstant: PaneHeaderView.height),
+            oldHeader.trailingAnchor.constraint(equalTo: oldColumn.trailingAnchor),
+            headerDivider.leadingAnchor.constraint(equalTo: oldHeader.trailingAnchor),
+            headerDivider.trailingAnchor.constraint(equalTo: newColumn.leadingAnchor),
+            headerDivider.topAnchor.constraint(equalTo: oldHeader.topAnchor),
+            headerDivider.bottomAnchor.constraint(equalTo: oldHeader.bottomAnchor),
+            newHeader.leadingAnchor.constraint(equalTo: newColumn.leadingAnchor),
+            newHeader.trailingAnchor.constraint(equalTo: trailingAnchor),
+            newHeader.topAnchor.constraint(equalTo: oldHeader.topAnchor),
+            newHeader.bottomAnchor.constraint(equalTo: oldHeader.bottomAnchor),
             splitView.leadingAnchor.constraint(equalTo: leadingAnchor),
             splitView.trailingAnchor.constraint(equalTo: markerStrip.leadingAnchor),
-            splitView.topAnchor.constraint(equalTo: topAnchor),
+            splitView.topAnchor.constraint(equalTo: oldHeader.bottomAnchor),
             splitView.bottomAnchor.constraint(equalTo: bottomAnchor),
             markerStrip.widthAnchor.constraint(equalToConstant: ChangeMarkerStrip.width),
             markerStrip.trailingAnchor.constraint(equalTo: trailingAnchor),
-            markerStrip.topAnchor.constraint(equalTo: topAnchor),
+            markerStrip.topAnchor.constraint(equalTo: splitView.topAnchor),
             markerStrip.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         oldColumn.onScroll = { [weak self] column in self?.mirrorScroll(from: column) }
@@ -115,6 +138,12 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     }
 
     // MARK: - Content
+
+    /// Labels and counts for the bars over the panes.
+    func setHeaders(old: PaneHeaderView.Content, new: PaneHeaderView.Content) {
+        oldHeader.update(old)
+        newHeader.update(new)
+    }
 
     /// Labels for sides that have no file (added / deleted); nil shows the rows as usual.
     func setPlaceholders(old: String?, new: String?) {

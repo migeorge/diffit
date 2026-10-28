@@ -1,14 +1,13 @@
 import SwiftUI
 
-/// The selected file: a thin header with each side's label and the change counts, then the panes.
+/// The selected file: any banners, then the panes with their headers (each side's label and
+/// change count; drawn by the pair view so they follow its divider).
 struct DiffDetailView: View {
     @Environment(AppSettings.self) private var settings
     let entry: FileEntry
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
             banners
             content
         }
@@ -16,11 +15,15 @@ struct DiffDetailView: View {
 
     // MARK: - Header
 
+    private var oldLabel: String { entry.old?.label ?? "No original" }
+    private var newLabel: String { entry.new?.label ?? "Deleted" }
+
+    /// Only the binary presentation has no pair view to draw the headers.
     private var header: some View {
         HStack(spacing: 0) {
-            sideLabel(entry.old?.label ?? "No original", count: entry.deletions, sign: "−", color: .red)
+            sideLabel(oldLabel, count: entry.deletions, sign: "−", color: .red)
             Divider().frame(height: 16)
-            sideLabel(entry.new?.label ?? "Deleted", count: entry.additions, sign: "+", color: .green)
+            sideLabel(newLabel, count: entry.additions, sign: "+", color: .green)
         }
         .font(.callout)
         .padding(.vertical, 4)
@@ -75,6 +78,8 @@ struct DiffDetailView: View {
     @ViewBuilder
     private var content: some View {
         if entry.status == .binary {
+            header
+            Divider()
             binaryPlaceholder
         } else {
             DiffPairRepresentable(
@@ -86,6 +91,8 @@ struct DiffDetailView: View {
                 newSyntax: entry.newSyntax,
                 oldPlaceholder: entry.old == nil ? "No original" : nil,
                 newPlaceholder: entry.new == nil ? "Deleted" : nil,
+                oldHeader: .init(label: oldLabel, count: entry.deletions, isLoading: entry.isLoading),
+                newHeader: .init(label: newLabel, count: entry.additions, isLoading: entry.isLoading),
                 font: settings.font,
                 tabWidth: settings.tabWidth,
                 intraLineHighlights: settings.intraLineHighlights,

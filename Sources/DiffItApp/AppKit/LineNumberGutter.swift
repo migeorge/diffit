@@ -11,6 +11,7 @@ final class LineNumberGutter: NSView {
     private(set) var thickness: CGFloat = 40
 
     private static let horizontalPadding: CGFloat = 6
+    private static let currentBlockBarWidth: CGFloat = 3
 
     init(textView: DiffTextView, clipView: NSClipView) {
         self.textView = textView
@@ -56,6 +57,22 @@ final class LineNumberGutter: NSView {
         drawNumbers(in: dirtyRect)
         Theme.divider.setFill()
         NSRect(x: bounds.maxX - 1, y: dirtyRect.minY, width: 1, height: dirtyRect.height).fill()
+        drawCurrentBlock(in: dirtyRect)
+    }
+
+    /// The current block's rules continue through the gutter, plus a bar along its left edge.
+    private func drawCurrentBlock(in rect: NSRect) {
+        guard let textView, let clipView, let block = textView.currentBlock else { return }
+        var frame = textView.blockRect(block)
+        frame.origin.x = 0
+        frame.origin.y -= clipView.bounds.minY
+        frame.size.width = bounds.width
+        DiffTextView.drawBlockOutline(frame, in: rect)
+        let bar = NSRect(x: 0, y: frame.minY, width: Self.currentBlockBarWidth, height: frame.height)
+        if bar.intersects(rect) {
+            Theme.currentBlockOutline.setFill()
+            bar.fill()
+        }
     }
 
     private func drawNumbers(in rect: NSRect) {

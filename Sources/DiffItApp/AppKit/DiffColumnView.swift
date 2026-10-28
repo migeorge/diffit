@@ -128,6 +128,13 @@ final class DiffColumnView: NSView {
         gutter.needsDisplay = true
     }
 
+    /// Outlines `block` in the text view and the gutter.
+    func setCurrentBlock(_ block: Range<Int>?) {
+        guard textView.currentBlock != block else { return }
+        textView.currentBlock = block
+        gutter.needsDisplay = true
+    }
+
     // MARK: - Scrolling
 
     var clipView: NSClipView { scrollView.contentView }

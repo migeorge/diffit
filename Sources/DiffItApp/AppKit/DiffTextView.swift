@@ -23,6 +23,13 @@ final class DiffTextView: NSTextView {
             for row in [oldValue, hoverRow].compactMap({ $0 }) { setNeedsDisplay(rowRect(row)) }
         }
     }
+    /// Rows of the current change block, outlined in the accent colour.
+    var currentBlock: Range<Int>? {
+        didSet {
+            guard currentBlock != oldValue else { return }
+            for block in [oldValue, currentBlock].compactMap({ $0 }) { setNeedsDisplay(blockRect(block)) }
+        }
+    }
     /// Pointer moved over a row (nil when it left the pane).
     var onHover: ((Int?) -> Void)?
     /// Primary click landed on a row (selection handling continues as usual).
@@ -102,6 +109,12 @@ final class DiffTextView: NSTextView {
         NSRect(x: bounds.minX, y: rowTop(line), width: bounds.width, height: content?.lineHeight ?? 1)
     }
 
+    /// Frame of a run of rows, from the top of the first to the bottom of the last.
+    func blockRect(_ block: Range<Int>) -> NSRect {
+        guard !block.isEmpty else { return .zero }
+        return rowRect(block.lowerBound).union(rowRect(block.upperBound - 1))
+    }
+
     /// The row at a y position in view coordinates, clamped to the document.
     func row(atViewY y: CGFloat) -> Int? {
         guard let content, content.lineCount > 0 else { return nil }
@@ -171,6 +184,17 @@ final class DiffTextView: NSTextView {
                 row.fill()
             }
         }
+        if let currentBlock {
+            Self.drawBlockOutline(blockRect(currentBlock), in: rect)
+        }
+    }
+
+    /// Rules along the top and bottom edges of the current block (the gutter continues them).
+    static func drawBlockOutline(_ block: NSRect, in rect: NSRect) {
+        guard block.intersects(rect) else { return }
+        Theme.currentBlockOutline.setFill()
+        NSRect(x: block.minX, y: block.minY, width: block.width, height: 1).fill()
+        NSRect(x: block.minX, y: block.maxY - 1, width: block.width, height: 1).fill()
     }
 
     /// 1-px diagonal hatch over a filler row.

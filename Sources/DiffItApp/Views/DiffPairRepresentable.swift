@@ -15,6 +15,8 @@ struct DiffPairRepresentable: NSViewRepresentable {
     /// Centred label for a side with no file at all ("No original", "Deleted").
     let oldPlaceholder: String?
     let newPlaceholder: String?
+    let oldHeader: PaneHeaderView.Content
+    let newHeader: PaneHeaderView.Content
     let font: NSFont
     let tabWidth: Int
     let intraLineHighlights: Bool
@@ -36,6 +38,7 @@ struct DiffPairRepresentable: NSViewRepresentable {
     }
 
     func updateNSView(_ view: DiffPairView, context: Context) {
+        view.setHeaders(old: oldHeader, new: newHeader)
         let key = Key(entryID: entryID, generation: generation, settingsVersion: settingsVersion)
         guard context.coordinator.lastKey != key else { return }
         let sameEntry = context.coordinator.lastKey?.entryID == entryID
