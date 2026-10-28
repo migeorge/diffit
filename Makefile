@@ -4,7 +4,7 @@ BUILD    = .build/release
 APPDIR   = build/$(APP).app
 VERSION ?= 0.1.0
 
-.PHONY: build app install git-config test run
+.PHONY: build app install test run
 
 build:            ## release build of both executables
 	swift build -c release
@@ -19,13 +19,9 @@ app: build        ## assemble build/DiffIt.app
 	[ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns $(APPDIR)/Contents/Resources/ || true
 	codesign --force --deep --sign - $(APPDIR)
 
-install: app      ## copy to /Applications and symlink the CLI
+# The CLI symlink and the git config are the user's in-app Install Command Line Tool action.
+install: app      ## copy to /Applications
 	rm -rf /Applications/$(APP).app && cp -R $(APPDIR) /Applications/
-	mkdir -p $(HOME)/.local/bin
-	ln -sf /Applications/$(APP).app/Contents/Helpers/diffit $(HOME)/.local/bin/diffit
-
-git-config:       ## point git at the tool
-	$(HOME)/.local/bin/diffit --git-config
 
 # The Command Line Tools ship Swift Testing outside the default search path;
 # without Xcode, `swift test` needs to be told where it is (see DECISIONS.md).

@@ -68,10 +68,10 @@ private struct InstallCard: View {
 private struct UnbundledNote: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("This build has no bundled command line tool. From a source checkout:")
+            Text("This build has no bundled command line tool. From a source checkout, install the app and use its Install button:")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("make install && make git-config")
+            Text("make install && open /Applications/DiffIt.app")
                 .font(.system(.caption, design: .monospaced))
                 .textSelection(.enabled)
                 .padding(10)

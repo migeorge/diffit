@@ -26,9 +26,10 @@ To build from source you need Xcode 26 or the matching Command Line Tools:
 ```sh
 git clone <this repository> diffit
 cd diffit
-make install      # builds, assembles DiffIt.app in /Applications, symlinks ~/.local/bin/diffit
-make git-config   # same as the in-app Install button's git step
+make install      # builds and puts DiffIt.app in /Applications
 ```
+
+Then open the app and click **Install Command Line Tool** as above.
 
 ## Use
 
