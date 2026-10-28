@@ -4,6 +4,9 @@ import AppKit
 final class DiffColumnView: NSView {
     let side: DiffSide
     let scrollView = NSScrollView()
+    /// Created before the gutter: the gutter keeps a weak reference to the clip view, so it must
+    /// be the one the scroll view keeps, not the default one that this replaces.
+    private let clip = PaneClipView()
     let textView = DiffTextView.make()
     let gutter: LineNumberGutter
     private var gutterWidth: NSLayoutConstraint?
@@ -25,7 +28,7 @@ final class DiffColumnView: NSView {
 
     init(side: DiffSide) {
         self.side = side
-        gutter = LineNumberGutter(textView: textView, clipView: scrollView.contentView)
+        gutter = LineNumberGutter(textView: textView, clipView: clip)
         super.init(frame: .zero)
 
         scrollView.hasVerticalScroller = true
@@ -36,7 +39,7 @@ final class DiffColumnView: NSView {
         // background is needed; on macOS 26 enabling it adds a visual-effect view.
         scrollView.drawsBackground = false
         scrollView.automaticallyAdjustsContentInsets = false
-        scrollView.contentView = PaneClipView()
+        scrollView.contentView = clip
         scrollView.documentView = textView
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         gutter.translatesAutoresizingMaskIntoConstraints = false
@@ -65,7 +68,6 @@ final class DiffColumnView: NSView {
             placeholderLabel.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
         ])
 
-        let clip = scrollView.contentView
         clip.postsBoundsChangedNotifications = true
         clip.postsFrameChangedNotifications = true
         let center = NotificationCenter.default
