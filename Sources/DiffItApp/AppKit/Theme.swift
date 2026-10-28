@@ -19,6 +19,16 @@ enum Theme {
     static let removedGutter = dynamic(light: hex(0xFFF2F2), dark: rgba(255, 90, 90, 0.10))
     static let addedGutter = dynamic(light: hex(0xF0FFF3), dark: rgba(80, 220, 120, 0.10))
 
+    /// Row under the pointer, drawn over the diff tint in both panes.
+    static let hoverRow = dynamic(light: rgba(0, 0, 0, 0.05), dark: rgba(255, 255, 255, 0.06))
+
+    /// Change marker strip.
+    static let markerAdded = dynamic(light: hex(0x3DBE63), dark: hex(0x50DC78))
+    static let markerRemoved = dynamic(light: hex(0xE0504F), dark: hex(0xFF5A5A))
+    static let markerModified = dynamic(light: hex(0xE0A030), dark: hex(0xF0B848))
+    static let markerCurrentOutline = NSColor.controlAccentColor
+    static let viewportIndicator = dynamic(light: rgba(0, 0, 0, 0.07), dark: rgba(255, 255, 255, 0.10))
+
     /// Full-width background for one row on one side; nil for untinted context rows.
     static func rowBackground(_ kind: RowKind, side: DiffSide, isFiller: Bool) -> NSColor? {
         if isFiller { return filler }

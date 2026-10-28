@@ -110,6 +110,13 @@ final class DiffColumnView: NSView {
         if textView.frame.size != size { textView.setFrameSize(size) }
     }
 
+    /// Highlights `row` (view-wide hover) in the text view and the gutter.
+    func setHoverRow(_ row: Int?) {
+        guard textView.hoverRow != row else { return }
+        textView.hoverRow = row
+        gutter.needsDisplay = true
+    }
+
     // MARK: - Scrolling
 
     var clipView: NSClipView { scrollView.contentView }

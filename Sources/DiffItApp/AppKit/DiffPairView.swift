@@ -7,10 +7,15 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     let oldColumn = DiffColumnView(side: .old)
     let newColumn = DiffColumnView(side: .new)
     private let splitView = NSSplitView()
+    private let markerStrip = ChangeMarkerStrip()
 
     private(set) var changeBlocks: [Range<Int>] = []
     private(set) var currentBlock: Int? {
-        didSet { if currentBlock != oldValue { publishNavigation() } }
+        didSet {
+            guard currentBlock != oldValue else { return }
+            markerStrip.currentBlock = currentBlock
+            publishNavigation()
+        }
     }
     private var isSyncing = false
 
@@ -30,18 +35,50 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         splitView.addArrangedSubview(newColumn)
         oldColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
         newColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        markerStrip.translatesAutoresizingMaskIntoConstraints = false
         addSubview(splitView)
+        addSubview(markerStrip)
         NSLayoutConstraint.activate([
             splitView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            splitView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            splitView.trailingAnchor.constraint(equalTo: markerStrip.leadingAnchor),
             splitView.topAnchor.constraint(equalTo: topAnchor),
             splitView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            markerStrip.widthAnchor.constraint(equalToConstant: ChangeMarkerStrip.width),
+            markerStrip.trailingAnchor.constraint(equalTo: trailingAnchor),
+            markerStrip.topAnchor.constraint(equalTo: topAnchor),
+            markerStrip.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         oldColumn.onScroll = { [weak self] column in self?.mirrorScroll(from: column) }
         newColumn.onScroll = { [weak self] column in
             self?.mirrorScroll(from: column)
             self?.updateCurrentBlock()
+            self?.updateViewportIndicator()
         }
+        markerStrip.onSelect = { [weak self] index in self?.scrollToChangeBlock(index) }
+        for column in [oldColumn, newColumn] {
+            column.textView.onHover = { [weak self] row in self?.setHoverRow(row) }
+            column.textView.onRowClick = { [weak self] row in self?.focusBlock(containing: row) }
+        }
+    }
+
+    // MARK: - Hover and click
+
+    private func setHoverRow(_ row: Int?) {
+        oldColumn.setHoverRow(row)
+        newColumn.setHoverRow(row)
+    }
+
+    /// A click inside a change block makes it the current one without scrolling.
+    private func focusBlock(containing row: Int) {
+        if let index = changeBlocks.firstIndex(where: { $0.contains(row) }) {
+            currentBlock = index
+        }
+    }
+
+    private func updateViewportIndicator() {
+        let clip = newColumn.clipView.bounds
+        let height = max(newColumn.textView.frame.height, 1)
+        markerStrip.viewport = (clip.minY / height)...min(1, clip.maxY / height)
     }
 
     @available(*, unavailable)
@@ -95,12 +132,16 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             changeBlocks = []
             newLineOfRow = []
             currentBlock = nil
+            markerStrip.blocks = []
+            markerStrip.rowCount = 0
             publishNavigation()
             return
         }
         oldColumn.install(DiffTextBuilder.build(result, side: .old, style: style), font: style.font, showChangeHatch: showChangeHatch)
         newColumn.install(DiffTextBuilder.build(result, side: .new, style: style), font: style.font, showChangeHatch: showChangeHatch)
         changeBlocks = result.changeBlocks
+        markerStrip.blocks = result.changeBlocks.map { ($0, Self.blockKind(result.rows[$0])) }
+        markerStrip.rowCount = result.rows.count
         let mappedRow = anchor.flatMap { rowFollowingContent(from: $0.line, mapping: lineMapping, rows: result.rows) }
         newLineOfRow = result.rows.map(\.newLine)
         if let currentBlock, !changeBlocks.indices.contains(currentBlock) { self.currentBlock = nil }
@@ -114,7 +155,22 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             oldColumn.setVerticalOrigin(0)
             currentBlock = nil
         }
+        updateViewportIndicator()
         publishNavigation()
+    }
+
+    private static func blockKind(_ rows: ArraySlice<DiffRow>) -> ChangeBlockKind {
+        var added = false, removed = false
+        for row in rows {
+            switch row.kind {
+            case .added: added = true
+            case .removed: removed = true
+            case .modified: return .modified
+            case .context: break
+            }
+            if added && removed { return .modified }
+        }
+        return added ? .added : .removed
     }
 
     /// The row in `rows` showing the same new-side content as previous row `row`, via `mapping`.

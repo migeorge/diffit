@@ -71,6 +71,10 @@ final class LineNumberGutter: NSView {
                 color.setFill()
                 cell.fill()
             }
+            if line == textView.hoverRow {
+                Theme.hoverRow.setFill()
+                cell.fill()
+            }
             guard let number = content.sourceLineNumbers[line] else { return }
             let label = String(number) as NSString
             let size = label.size(withAttributes: attributes)

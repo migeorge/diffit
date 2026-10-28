@@ -16,6 +16,18 @@ final class DiffTextView: NSTextView {
     var showChangeHatch = true {
         didSet { needsDisplay = true }
     }
+    /// Row under the pointer in either pane; drawn with `Theme.hoverRow`.
+    var hoverRow: Int? {
+        didSet {
+            guard hoverRow != oldValue else { return }
+            for row in [oldValue, hoverRow].compactMap({ $0 }) { setNeedsDisplay(rowRect(row)) }
+        }
+    }
+    /// Pointer moved over a row (nil when it left the pane).
+    var onHover: ((Int?) -> Void)?
+    /// Primary click landed on a row (selection handling continues as usual).
+    var onRowClick: ((Int) -> Void)?
+    private var hoverTrackingArea: NSTrackingArea?
 
     // MARK: - Setup
 
@@ -85,6 +97,11 @@ final class DiffTextView: NSTextView {
         textContainerInset.height + CGFloat(line) * (content?.lineHeight ?? 1)
     }
 
+    /// Full-width frame of a row in view coordinates.
+    func rowRect(_ line: Int) -> NSRect {
+        NSRect(x: bounds.minX, y: rowTop(line), width: bounds.width, height: content?.lineHeight ?? 1)
+    }
+
     /// The row at a y position in view coordinates, clamped to the document.
     func row(atViewY y: CGFloat) -> Int? {
         guard let content, content.lineCount > 0 else { return nil }
@@ -105,6 +122,33 @@ final class DiffTextView: NSTextView {
         }
     }
 
+    // MARK: - Mouse
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverTrackingArea { removeTrackingArea(hoverTrackingArea) }
+        let area = NSTrackingArea(rect: .zero,
+                                  options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        onHover?(row(atViewY: convert(event.locationInWindow, from: nil).y))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        onHover?(nil)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if let row = row(atViewY: convert(event.locationInWindow, from: nil).y) { onRowClick?(row) }
+        super.mouseDown(with: event)
+    }
+
     // MARK: - Drawing
 
     override func drawBackground(in rect: NSRect) {
@@ -118,6 +162,13 @@ final class DiffTextView: NSTextView {
             row.fill()
             if hatch, content.isFiller[line] {
                 Self.drawHatch(in: row)
+            }
+        }
+        if let hoverRow, hoverRow < content.lineCount {
+            let row = rowRect(hoverRow)
+            if row.intersects(rect) {
+                Theme.hoverRow.setFill()
+                row.fill()
             }
         }
     }
