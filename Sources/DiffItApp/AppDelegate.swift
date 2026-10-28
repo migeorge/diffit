@@ -82,6 +82,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             window.contentViewController = hosting
             window.toolbarStyle = .unified
+            window.tabbingMode = .disallowed
+            // Content comes from IPC, never from saved state; this also avoids the "reopen windows?"
+            // prompt after a crash.
+            window.isRestorable = false
             window.isReleasedWhenClosed = false
             window.minSize = NSSize(width: 900, height: 500)
             window.setContentSize(NSSize(width: 1440, height: 900))

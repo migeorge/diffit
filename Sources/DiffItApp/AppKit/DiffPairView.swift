@@ -9,8 +9,13 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     private let splitView = NSSplitView()
 
     private(set) var changeBlocks: [Range<Int>] = []
-    private(set) var currentBlock: Int?
+    private(set) var currentBlock: Int? {
+        didSet { if currentBlock != oldValue { publishNavigation() } }
+    }
     private var isSyncing = false
+
+    /// Reports block count / current block whenever either changes (toolbar indicator).
+    var onNavigationChange: ((ChangeNavigationState) -> Void)?
 
     // MARK: - Setup
 
@@ -33,7 +38,10 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             splitView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         oldColumn.onScroll = { [weak self] column in self?.mirrorScroll(from: column) }
-        newColumn.onScroll = { [weak self] column in self?.mirrorScroll(from: column) }
+        newColumn.onScroll = { [weak self] column in
+            self?.mirrorScroll(from: column)
+            self?.updateCurrentBlock()
+        }
     }
 
     @available(*, unavailable)
@@ -67,6 +75,12 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
 
     // MARK: - Content
 
+    /// Labels for sides that have no file (added / deleted); nil shows the rows as usual.
+    func setPlaceholders(old: String?, new: String?) {
+        oldColumn.placeholder = old
+        newColumn.placeholder = new
+    }
+
     /// Rebuilds both panes. The first visible row is preserved across reloads (rows above may have shifted).
     func load(_ result: DiffResult?, style: DiffTextBuilder.Style, showChangeHatch: Bool, keepScroll: Bool) {
         let anchor = keepScroll ? newColumn.firstVisibleLine() : nil
@@ -75,6 +89,7 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             newColumn.install(.empty(side: .new), font: style.font, showChangeHatch: showChangeHatch)
             changeBlocks = []
             currentBlock = nil
+            publishNavigation()
             return
         }
         oldColumn.install(DiffTextBuilder.build(result, side: .old, style: style), font: style.font, showChangeHatch: showChangeHatch)
@@ -85,10 +100,13 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             let line = min(anchor.line, max(0, result.rows.count - 1))
             newColumn.scroll(toLine: line, offset: anchor.offset)
             mirrorScroll(from: newColumn)
+            updateCurrentBlock()
         } else {
             newColumn.setVerticalOrigin(0)
             oldColumn.setVerticalOrigin(0)
+            currentBlock = nil
         }
+        publishNavigation()
     }
 
     // MARK: - Scroll sync
@@ -106,19 +124,38 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
 
     var changeBlockCount: Int { changeBlocks.count }
 
+    /// Navigation parks a block's first row this far below the top of the viewport.
+    private var anchorOffset: CGFloat { newColumn.clipView.bounds.height / 3 }
+
     func scrollToChangeBlock(_ index: Int) {
         guard changeBlocks.indices.contains(index) else { return }
-        currentBlock = index
-        let row = changeBlocks[index].lowerBound
-        let offset = newColumn.clipView.bounds.height / 3
-        newColumn.scroll(toLine: row, offset: offset)
+        newColumn.scroll(toLine: changeBlocks[index].lowerBound, offset: anchorOffset)
         mirrorScroll(from: newColumn)
+        currentBlock = index
+    }
+
+    /// Keeps the current block while it stays on screen; once it scrolls away, the current block
+    /// becomes the first visible block at or below the anchor line, or none.
+    private func updateCurrentBlock() {
+        let clip = newColumn.clipView.bounds
+        guard !changeBlocks.isEmpty,
+              let firstVisible = newColumn.textView.row(atViewY: clip.minY),
+              let anchorRow = newColumn.textView.row(atViewY: clip.minY + anchorOffset),
+              let lastVisible = newColumn.textView.row(atViewY: clip.maxY - 1) else {
+            currentBlock = nil
+            return
+        }
+        if let currentBlock, changeBlocks.indices.contains(currentBlock),
+           changeBlocks[currentBlock].overlaps(firstVisible...lastVisible) {
+            return
+        }
+        currentBlock = changeBlocks.firstIndex { $0.upperBound > anchorRow && $0.lowerBound <= lastVisible }
     }
 
     func nextChange() {
         guard !changeBlocks.isEmpty else { return }
         let firstVisible = newColumn.firstVisibleLine()?.line ?? 0
-        // The first block starting after the row currently at the top (or below the current block).
+        // The block after the current one, or the first block after the row at the top.
         let floor = currentBlock.map { changeBlocks[$0].lowerBound } ?? firstVisible
         if let next = changeBlocks.firstIndex(where: { $0.lowerBound > floor }) {
             scrollToChangeBlock(next)
@@ -132,5 +169,9 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         if let previous = changeBlocks.lastIndex(where: { $0.lowerBound < ceiling }) {
             scrollToChangeBlock(previous)
         }
+    }
+
+    private func publishNavigation() {
+        onNavigationChange?(ChangeNavigationState(current: currentBlock, count: changeBlocks.count))
     }
 }

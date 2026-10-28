@@ -20,6 +20,8 @@ final class AppModel {
 
     /// The pair view currently on screen, so menu commands can drive change navigation.
     @ObservationIgnored weak var activeNavigator: (any DiffNavigator)?
+    /// Mirror of the navigator's position for the toolbar indicator and menu enabling.
+    var changeNavigation = ChangeNavigationState.none
 
     var selectedEntry: FileEntry? {
         guard let selection else { return nil }

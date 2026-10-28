@@ -81,8 +81,11 @@ struct DiffDetailView: View {
                 entryID: entry.id,
                 generation: entry.generation,
                 result: entry.result,
+                oldPlaceholder: entry.old == nil ? "No original" : nil,
+                newPlaceholder: entry.new == nil ? "Deleted" : nil,
                 font: settings.font,
                 tabWidth: settings.tabWidth,
+                intraLineHighlights: settings.intraLineHighlights,
                 showChangeHatch: settings.showChangeHatch,
                 settingsVersion: settings.version
             )

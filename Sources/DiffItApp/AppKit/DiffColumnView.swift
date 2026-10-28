@@ -1,12 +1,13 @@
 import AppKit
 
-/// One pane: a scroll view holding a `DiffTextView` with a `LineNumberRuler`.
+/// One pane: a line-number gutter beside a scroll view holding a `DiffTextView`.
 final class DiffColumnView: NSView {
     let side: DiffSide
     let scrollView = NSScrollView()
     let textView = DiffTextView.make()
     let gutter: LineNumberGutter
     private var gutterWidth: NSLayoutConstraint?
+    private let placeholderLabel = NSTextField(labelWithString: "")
 
     /// Called with the clip view's new bounds origin after the user (or sync) scrolls this pane.
     var onScroll: ((DiffColumnView) -> Void)?
@@ -32,8 +33,15 @@ final class DiffColumnView: NSView {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         gutter.translatesAutoresizingMaskIntoConstraints = false
 
+        placeholderLabel.font = .systemFont(ofSize: 15)
+        placeholderLabel.textColor = .secondaryLabelColor
+        placeholderLabel.alignment = .center
+        placeholderLabel.isHidden = true
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+
         addSubview(gutter)
         addSubview(scrollView)
+        addSubview(placeholderLabel)
         let width = gutter.widthAnchor.constraint(equalToConstant: gutter.thickness)
         gutterWidth = width
         NSLayoutConstraint.activate([
@@ -45,6 +53,8 @@ final class DiffColumnView: NSView {
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: topAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            placeholderLabel.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
+            placeholderLabel.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
         ])
 
         let clip = scrollView.contentView
@@ -73,8 +83,16 @@ final class DiffColumnView: NSView {
 
     // MARK: - Content
 
+    /// Shown centred over the pane when this side has no file at all; rows are then plain filler.
+    var placeholder: String? {
+        didSet {
+            placeholderLabel.stringValue = placeholder ?? ""
+            placeholderLabel.isHidden = placeholder == nil
+        }
+    }
+
     func install(_ content: DiffPaneContent, font: NSFont, showChangeHatch: Bool) {
-        textView.showChangeHatch = showChangeHatch
+        textView.showChangeHatch = showChangeHatch && placeholder == nil
         textView.install(content, font: font)
         if gutter.contentDidChange(font: font) {
             gutterWidth?.constant = gutter.thickness
