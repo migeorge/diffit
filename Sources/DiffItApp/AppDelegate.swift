@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        AppModel.shared.stopAllWatchers()
         ipcServer?.stop()
     }
 

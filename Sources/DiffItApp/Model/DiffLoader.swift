@@ -14,6 +14,7 @@ enum DiffLoader {
         var size: Int
         var isBinary: Bool
         var error: String?
+        var isMissing = false
     }
 
     private struct Outcome: Sendable {
@@ -23,6 +24,8 @@ enum DiffLoader {
         var intraLineDisabled: Bool
         var oldSize: Int?
         var newSize: Int?
+        /// A live file is missing (mid-save or deleted): keep the last diff, show the error.
+        var keepPrevious = false
     }
 
     static func load(_ entry: FileEntry) {
@@ -41,9 +44,13 @@ enum DiffLoader {
     // MARK: - Private
 
     private static func apply(_ outcome: Outcome, to entry: FileEntry) {
+        entry.error = outcome.error
+        if outcome.keepPrevious, entry.result != nil {
+            entry.isLoading = false
+            return
+        }
         entry.result = outcome.result
         if let status = outcome.status { entry.status = status }
-        entry.error = outcome.error
         entry.intraLineDisabled = outcome.intraLineDisabled
         entry.oldSize = outcome.oldSize
         entry.newSize = outcome.newSize
@@ -59,6 +66,7 @@ enum DiffLoader {
         let oldContent = old.map(read), newContent = new.map(read)
         var outcome = Outcome(intraLineDisabled: false, oldSize: oldContent?.size, newSize: newContent?.size)
         outcome.error = oldContent?.error ?? newContent?.error
+        outcome.keepPrevious = oldContent?.isMissing == true || newContent?.isMissing == true
 
         if oldContent?.isBinary == true || newContent?.isBinary == true {
             outcome.status = .binary
@@ -82,7 +90,7 @@ enum DiffLoader {
         } catch {
             let missing = !FileManager.default.fileExists(atPath: side.path)
             let message = missing ? "File removed: \(side.path)" : "Cannot read \(side.path): \(error.localizedDescription)"
-            return SideContent(text: "", size: 0, isBinary: false, error: message)
+            return SideContent(text: "", size: 0, isBinary: false, error: message, isMissing: missing)
         }
         if DiffEngine.isProbablyBinary(data) {
             return SideContent(text: "", size: data.count, isBinary: true, error: nil)

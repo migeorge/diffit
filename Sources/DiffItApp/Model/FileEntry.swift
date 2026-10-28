@@ -28,6 +28,10 @@ final class FileEntry: Identifiable {
     /// Loader bookkeeping: a reload arrived while one was running.
     var reloadRequested = false
 
+    /// Watchers for the live sides; empty until `AppModel` starts them.
+    @ObservationIgnored var watchers: [FileWatcher] = []
+    var isWatched: Bool { !watchers.isEmpty }
+
     init(displayPath: String, old: FileSide?, new: FileSide?) {
         self.displayPath = displayPath
         self.old = old
@@ -40,6 +44,7 @@ final class FileEntry: Identifiable {
     }
 
     var fileName: String { (displayPath as NSString).lastPathComponent }
+    var liveSides: [FileSide] { [old, new].compactMap { $0 }.filter(\.isLive) }
     var additions: Int { result?.additions ?? 0 }
     var deletions: Int { result?.deletions ?? 0 }
 

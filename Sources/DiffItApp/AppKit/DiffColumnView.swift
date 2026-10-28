@@ -27,6 +27,7 @@ final class DiffColumnView: NSView {
         // The text view always covers the clip view (see fitTextViewToClip), so no scroll view
         // background is needed; on macOS 26 enabling it adds a visual-effect view.
         scrollView.drawsBackground = false
+        scrollView.automaticallyAdjustsContentInsets = false
         scrollView.documentView = textView
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         gutter.translatesAutoresizingMaskIntoConstraints = false
@@ -81,24 +82,26 @@ final class DiffColumnView: NSView {
         fitTextViewToClip()
     }
 
-    /// The text view sizes itself to its text; keep it at least as large as the clip view so row
-    /// tints span the full pane width and short documents still paint the pane background.
+    /// The text view is at least as large as the clip view (so row tints span the pane and short
+    /// documents still paint the background) and as large as the whole document.
     private func fitTextViewToClip() {
-        let size = scrollView.contentView.bounds.size
-        guard size.width > 0 else { return }
-        textView.minSize = size
-        textView.sizeToFit()
+        let clip = scrollView.contentView.bounds.size
+        guard clip.width > 0 else { return }
+        let content = textView.contentSize
+        let size = NSSize(width: max(clip.width, content.width), height: max(clip.height, content.height))
+        if textView.frame.size != size { textView.setFrameSize(size) }
     }
 
     // MARK: - Scrolling
 
     var clipView: NSClipView { scrollView.contentView }
 
-    /// First visible line and the pixel offset of its top above the clip view's top edge.
+    /// First visible line and how far its top sits below the clip view's top edge
+    /// (negative when the row is partly scrolled past). Feed it back to `scroll(toLine:offset:)`.
     func firstVisibleLine() -> (line: Int, offset: CGFloat)? {
         let top = clipView.bounds.minY
         guard let line = textView.row(atViewY: top) else { return nil }
-        return (line, top - textView.rowTop(line))
+        return (line, textView.rowTop(line) - top)
     }
 
     /// Scrolls vertically so that `line`'s top sits `offset` points below the clip view's top.

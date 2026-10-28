@@ -7,7 +7,13 @@ final class AppModel {
 
     /// Newest first.
     var changeSets: [ChangeSet] = []
-    var selection: FileEntry.ID?
+    var selection: FileEntry.ID? {
+        didSet { ensureSelectedIsWatched() }
+    }
+
+    /// Descriptor budget: beyond this many watched files, only the selected file is watched.
+    static let watcherLimit = 1_000
+    private var watchedCount = 0
 
     /// Called when a message starts a new changeset; the app delegate shows and activates the window.
     @ObservationIgnored var onNewChangeSet: (() -> Void)?
@@ -53,8 +59,9 @@ final class AppModel {
         var firstEntry: FileEntry?
         for file in message.files {
             let entry = FileEntry(displayPath: file.displayPath, old: file.old, new: file.new)
-            _ = changeSet.upsert(entry)
+            if let replaced = changeSet.upsert(entry) { stopWatching(replaced) }
             DiffLoader.load(entry)
+            if watchedCount < Self.watcherLimit { startWatching(entry) }
             if firstEntry == nil { firstEntry = entry }
         }
 
@@ -71,11 +78,13 @@ final class AppModel {
 
     // MARK: - Closing
 
-    /// Removes the changeset and deletes its snapshot directories (the app's own cache; never user files).
+    /// Removes the changeset, stops its watchers and deletes its snapshot directories
+    /// (the app's own cache; never user files).
     func close(_ changeSet: ChangeSet) {
         guard let index = changeSets.firstIndex(where: { $0.id == changeSet.id }) else { return }
         let wasSelected = changeSet.files.contains { $0.id == selection }
         changeSets.remove(at: index)
+        for entry in changeSet.files { stopWatching(entry) }
         let fm = FileManager.default
         let root = DiffItPaths.snapshotsRoot().path
         for dir in changeSet.snapshotDirectories where dir.hasPrefix(root) {
@@ -88,6 +97,51 @@ final class AppModel {
 
     func closeSelectedChangeSet() {
         if let cs = selectedChangeSet ?? changeSets.first { close(cs) }
+    }
+
+    // MARK: - Watching
+
+    /// Starts one watcher per live side. A change reloads the diff; a vanished file keeps the
+    /// last diff, surfaces an error, and drops the entry's watchers so that a later Reload (or
+    /// reselecting the file) re-arms them against the recreated file.
+    private func startWatching(_ entry: FileEntry) {
+        guard entry.watchers.isEmpty else { return }
+        for side in entry.liveSides {
+            let watcher = FileWatcher(
+                path: side.path,
+                onChange: { Task { @MainActor in DiffLoader.load(entry) } },
+                onMissing: {
+                    Task { @MainActor in
+                        entry.error = "File removed: \(side.path)"
+                        AppModel.shared.stopWatching(entry)
+                    }
+                }
+            )
+            if watcher.start() {
+                entry.watchers.append(watcher)
+            } else {
+                entry.error = "Cannot watch \(side.path)"
+            }
+        }
+        if !entry.watchers.isEmpty { watchedCount += 1 }
+    }
+
+    private func stopWatching(_ entry: FileEntry) {
+        guard !entry.watchers.isEmpty else { return }
+        for watcher in entry.watchers { watcher.stop() }
+        entry.watchers = []
+        watchedCount -= 1
+    }
+
+    /// Over the descriptor budget, files are only watched while selected.
+    private func ensureSelectedIsWatched() {
+        guard let entry = selectedEntry, !entry.isWatched, !entry.liveSides.isEmpty else { return }
+        startWatching(entry)
+        DiffLoader.load(entry)   // it may have changed while unwatched
+    }
+
+    func stopAllWatchers() {
+        for cs in changeSets { for entry in cs.files { stopWatching(entry) } }
     }
 
     // MARK: - Navigation
@@ -109,7 +163,12 @@ final class AppModel {
         selection = files[next].id
     }
 
+    /// Reloads the selected file, re-arming its watchers if they gave up (e.g. after a delete).
     func reloadSelected() {
-        if let entry = selectedEntry { DiffLoader.load(entry) }
+        guard let entry = selectedEntry else { return }
+        if !entry.isWatched, !entry.liveSides.isEmpty, watchedCount < Self.watcherLimit {
+            startWatching(entry)
+        }
+        DiffLoader.load(entry)
     }
 }

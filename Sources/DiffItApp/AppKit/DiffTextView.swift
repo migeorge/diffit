@@ -2,9 +2,13 @@ import AppKit
 
 /// Read-only text view that tints whole rows by diff kind.
 ///
-/// Deliberately TextKit 1 (`usingTextLayoutManager: false`) with non-contiguous layout: TextKit 2
-/// re-lays out tens of thousands of fragments after any far viewport jump (about a second on a
-/// 50k-line file), while TextKit 1 lays out only the visible glyph range. See DECISIONS.md.
+/// Deliberately TextKit 1 (`usingTextLayoutManager: false`): TextKit 2 re-lays out tens of
+/// thousands of fragments after any far viewport jump (about a second on a 50k-line file).
+/// The whole document is laid out once in `install` (about 0.3 s for 50k single-height rows), after
+/// which scrolling anywhere is free and the view's geometry is final. Lazy (non-contiguous) layout
+/// was tried first and rejected: NSTextView keeps resizing itself and scrolling the clip view as
+/// layout progresses, which fought the arithmetic row geometry and left panes blank after a reload.
+/// See DECISIONS.md.
 final class DiffTextView: NSTextView {
     var content: DiffPaneContent? {
         didSet { needsDisplay = true }
@@ -17,7 +21,7 @@ final class DiffTextView: NSTextView {
 
     static func make() -> DiffTextView {
         let tv = DiffTextView(usingTextLayoutManager: false)
-        tv.layoutManager?.allowsNonContiguousLayout = true
+        tv.layoutManager?.allowsNonContiguousLayout = false
         tv.isEditable = false
         tv.isSelectable = true
         tv.isRichText = false
@@ -37,36 +41,44 @@ final class DiffTextView: NSTextView {
         tv.isContinuousSpellCheckingEnabled = false
         tv.isGrammarCheckingEnabled = false
         tv.smartInsertDeleteEnabled = false
-        tv.isVerticallyResizable = true
-        tv.isHorizontallyResizable = true
-        tv.autoresizingMask = []          // no width tracking: long lines scroll horizontally
-        tv.minSize = .zero
-        tv.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        // The view never resizes itself: DiffColumnView sets its frame from the known row count
+        // and measured line width. NSTextView's own resizing as layout progresses made the clip
+        // view jump during far scrolls.
+        tv.isVerticallyResizable = false
+        tv.isHorizontallyResizable = false
+        tv.autoresizingMask = []
         tv.textContainer?.widthTracksTextView = false
         tv.textContainer?.heightTracksTextView = false
         tv.textContainer?.size = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         tv.textContainer?.lineFragmentPadding = 8
         tv.textContainerInset = NSSize(width: 0, height: 4)
-        tv.registerForDraggedTypes([])    // R7: nothing can be dropped in
+        tv.registerForDraggedTypes([])    // view-only: nothing can be dropped in
         return tv
     }
 
     // MARK: - Content
 
-    /// Replaces the whole document.
+    /// Replaces the whole document and lays all of it out, so later scrolls never trigger layout.
     func install(_ content: DiffPaneContent, font: NSFont) {
         self.content = content
         self.font = font
         textStorage?.setAttributedString(content.text)
+        if let layoutManager, let textContainer {
+            layoutManager.ensureLayout(for: textContainer)
+        }
         setSelectedRange(NSRange(location: 0, length: 0))
         needsDisplay = true
     }
 
     // MARK: - Geometry
 
-    // Rows have a fixed height (pinned by the paragraph style), so positions are plain arithmetic
-    // and never force layout. Asking the layout manager would also be unreliable far from the
-    // visible region, where only estimated geometry exists.
+    /// Exact size of the whole document, from the row count and the measured widest line.
+    var contentSize: NSSize {
+        guard let content else { return .zero }
+        let padding = textContainer?.lineFragmentPadding ?? 0
+        return NSSize(width: ceil(content.textWidth + padding * 2 + textContainerInset.width * 2),
+                      height: textContainerInset.height * 2 + CGFloat(content.lineCount) * content.lineHeight)
+    }
 
     /// Top y (view coordinates) of a row.
     func rowTop(_ line: Int) -> CGFloat {

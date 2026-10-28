@@ -18,6 +18,8 @@ struct DiffPaneContent {
     let changeBlocks: [Range<Int>]
     /// Height of every row; the paragraph style pins each line to it.
     let lineHeight: CGFloat
+    /// Width of the widest line as drawn (without padding).
+    let textWidth: CGFloat
 
     var lineCount: Int { lineStarts.count }
 
@@ -49,6 +51,6 @@ struct DiffPaneContent {
 
     static func empty(side: DiffSide) -> DiffPaneContent {
         DiffPaneContent(side: side, text: NSAttributedString(), lineStarts: [], rowKinds: [],
-                        isFiller: [], sourceLineNumbers: [], changeBlocks: [], lineHeight: 1)
+                        isFiller: [], sourceLineNumbers: [], changeBlocks: [], lineHeight: 1, textWidth: 0)
     }
 }

@@ -67,7 +67,25 @@ enum DiffTextBuilder {
 
         return DiffPaneContent(side: side, text: text, lineStarts: lineStarts, rowKinds: rowKinds,
                                isFiller: isFiller, sourceLineNumbers: sourceLineNumbers,
-                               changeBlocks: result.changeBlocks, lineHeight: style.lineHeight)
+                               changeBlocks: result.changeBlocks, lineHeight: style.lineHeight,
+                               textWidth: widestLine(lines, style: style))
+    }
+
+    // MARK: - Measuring
+
+    /// Width of the widest line. Only the longest lines by length are measured, since measuring
+    /// every line of a large file would cost more than the diff itself.
+    static func widestLine(_ lines: [String], style: Style) -> CGFloat {
+        let candidates = lines.enumerated()
+            .map { ($0.offset, $0.element.utf16.count) }
+            .sorted { $0.1 > $1.1 }
+            .prefix(32)
+        let attributes = baseAttributes(style)
+        var widest: CGFloat = 0
+        for (index, _) in candidates {
+            widest = max(widest, (lines[index] as NSString).size(withAttributes: attributes).width)
+        }
+        return ceil(widest)
     }
 
     // MARK: - Attributes
