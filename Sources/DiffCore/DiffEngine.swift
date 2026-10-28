@@ -10,8 +10,11 @@ public enum DiffEngine {
         let a = interner.intern(oldSplit.lines)
         let b = interner.intern(newSplit.lines)
         let ops = PatienceDiff.diff(a, b, myersMaxCost: options.myersMaxCost)
+        let moves = options.detectMoves
+            ? MoveDetector.detect(ops: ops, oldIDs: a, newIDs: b, oldLines: oldSplit.lines, options: options)
+            : []
 
-        var built = RowBuilder.build(ops)
+        var built = RowBuilder.build(ops, moves: moves)
         if options.intraLine {
             for (index, row) in built.rows.enumerated() {
                 guard row.kind == .modified, let o = row.oldLine, let n = row.newLine else { continue }
@@ -29,6 +32,7 @@ public enum DiffEngine {
             changeBlocks: built.changeBlocks,
             additions: built.additions,
             deletions: built.deletions,
+            moves: moves,
             oldMissingFinalNewline: oldSplit.missingFinalNewline,
             newMissingFinalNewline: newSplit.missingFinalNewline
         )

@@ -21,6 +21,7 @@ enum DiffTextBuilder {
         var lineStarts: [Int] = []
         var rowKinds: [RowKind] = []
         var isFiller: [Bool] = []
+        var moveIDs: [Int?] = []
         var sourceLineNumbers: [Int?] = []
         var highlights: [(line: Int, ranges: [Range<Int>])] = []
         lineStarts.reserveCapacity(rows.count)
@@ -34,6 +35,7 @@ enum DiffTextBuilder {
             lineStarts.append(offset)
             rowKinds.append(row.kind)
             isFiller.append(sourceIndex == nil)
+            moveIDs.append(sourceIndex == nil ? nil : row.moveID)
             sourceLineNumbers.append(sourceIndex.map { $0 + 1 })
             if let sourceIndex {
                 let line = lines[sourceIndex]
@@ -66,7 +68,7 @@ enum DiffTextBuilder {
         text.endEditing()
 
         return DiffPaneContent(side: side, text: text, lineStarts: lineStarts, rowKinds: rowKinds,
-                               isFiller: isFiller, sourceLineNumbers: sourceLineNumbers,
+                               isFiller: isFiller, moveIDs: moveIDs, sourceLineNumbers: sourceLineNumbers,
                                changeBlocks: result.changeBlocks, lineHeight: style.lineHeight,
                                textWidth: widestLine(lines, style: style))
     }

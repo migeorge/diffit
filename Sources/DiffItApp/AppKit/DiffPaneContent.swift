@@ -12,6 +12,8 @@ struct DiffPaneContent {
     let rowKinds: [RowKind]
     /// True where this side has no line for the row.
     let isFiller: [Bool]
+    /// Move id for rows that are one end of a moved block.
+    let moveIDs: [Int?]
     /// 1-based source line number for the gutter; nil for fillers.
     let sourceLineNumbers: [Int?]
     /// Row indices where each change block starts (for navigation).
@@ -36,12 +38,12 @@ struct DiffPaneContent {
 
     func rowBackground(_ line: Int) -> NSColor? {
         guard rowKinds.indices.contains(line) else { return nil }
-        return Theme.rowBackground(rowKinds[line], side: side, isFiller: isFiller[line])
+        return Theme.rowBackground(rowKinds[line], side: side, isFiller: isFiller[line], isMoved: moveIDs[line] != nil)
     }
 
     func gutterBackground(_ line: Int) -> NSColor? {
         guard rowKinds.indices.contains(line) else { return nil }
-        return Theme.gutterRowBackground(rowKinds[line], side: side, isFiller: isFiller[line])
+        return Theme.gutterRowBackground(rowKinds[line], side: side, isFiller: isFiller[line], isMoved: moveIDs[line] != nil)
     }
 
     /// Largest source line number, for sizing the gutter.
@@ -50,7 +52,7 @@ struct DiffPaneContent {
     }
 
     static func empty(side: DiffSide) -> DiffPaneContent {
-        DiffPaneContent(side: side, text: NSAttributedString(), lineStarts: [], rowKinds: [],
-                        isFiller: [], sourceLineNumbers: [], changeBlocks: [], lineHeight: 1, textWidth: 0)
+        DiffPaneContent(side: side, text: NSAttributedString(), lineStarts: [], rowKinds: [], isFiller: [],
+                        moveIDs: [], sourceLineNumbers: [], changeBlocks: [], lineHeight: 1, textWidth: 0)
     }
 }

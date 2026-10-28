@@ -37,8 +37,10 @@ enum DiffLoader {
         entry.isLoading = true
         let old = entry.old, new = entry.new
         let previousNewLines = entry.result?.newLines
+        var options = DiffOptions()
+        options.detectMoves = AppSettings.shared.detectMoves
         Task.detached(priority: .userInitiated) {
-            let outcome = compute(old: old, new: new, previousNewLines: previousNewLines)
+            let outcome = compute(old: old, new: new, previousNewLines: previousNewLines, options: options)
             await MainActor.run { apply(outcome, to: entry) }
         }
     }
@@ -65,7 +67,8 @@ enum DiffLoader {
         }
     }
 
-    private nonisolated static func compute(old: FileSide?, new: FileSide?, previousNewLines: [String]?) -> Outcome {
+    private nonisolated static func compute(old: FileSide?, new: FileSide?, previousNewLines: [String]?,
+                                            options: DiffOptions) -> Outcome {
         let oldContent = old.map(read), newContent = new.map(read)
         var outcome = Outcome(intraLineDisabled: false, oldSize: oldContent?.size, newSize: newContent?.size)
         outcome.error = oldContent?.error ?? newContent?.error
@@ -76,7 +79,7 @@ enum DiffLoader {
             return outcome
         }
         // A side that failed to read is diffed as empty; the error is surfaced on the entry.
-        var options = DiffOptions()
+        var options = options
         let oldText = oldContent?.text ?? "", newText = newContent?.text ?? ""
         if oldText.utf16.count > intraLineLimit || newText.utf16.count > intraLineLimit {
             options.intraLine = false

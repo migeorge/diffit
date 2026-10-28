@@ -13,17 +13,22 @@ public struct DiffRow: Equatable, Sendable {
     public let oldHighlights: [Range<Int>]
     /// UTF-16 offset ranges within the new line (modified rows only).
     public let newHighlights: [Range<Int>]
+    /// Set on `.removed` / `.added` rows that are one end of a `DiffMove`.
+    public let moveID: Int?
 
     public init(kind: RowKind, oldLine: Int?, newLine: Int?,
-                oldHighlights: [Range<Int>] = [], newHighlights: [Range<Int>] = []) {
+                oldHighlights: [Range<Int>] = [], newHighlights: [Range<Int>] = [], moveID: Int? = nil) {
         self.kind = kind
         self.oldLine = oldLine
         self.newLine = newLine
         self.oldHighlights = oldHighlights
         self.newHighlights = newHighlights
+        self.moveID = moveID
     }
 
+    public var isMoved: Bool { moveID != nil }
+
     func withHighlights(old: [Range<Int>], new: [Range<Int>]) -> DiffRow {
-        DiffRow(kind: kind, oldLine: oldLine, newLine: newLine, oldHighlights: old, newHighlights: new)
+        DiffRow(kind: kind, oldLine: oldLine, newLine: newLine, oldHighlights: old, newHighlights: new, moveID: moveID)
     }
 }

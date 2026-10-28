@@ -6,17 +6,21 @@ public struct DiffResult: Sendable {
     public let changeBlocks: [Range<Int>]
     public let additions: Int
     public let deletions: Int
+    /// Blocks removed in one place and inserted unchanged in another (still counted above).
+    public let moves: [DiffMove]
     public let oldMissingFinalNewline: Bool
     public let newMissingFinalNewline: Bool
 
     public init(oldLines: [String], newLines: [String], rows: [DiffRow], changeBlocks: [Range<Int>],
-                additions: Int, deletions: Int, oldMissingFinalNewline: Bool, newMissingFinalNewline: Bool) {
+                additions: Int, deletions: Int, moves: [DiffMove] = [],
+                oldMissingFinalNewline: Bool, newMissingFinalNewline: Bool) {
         self.oldLines = oldLines
         self.newLines = newLines
         self.rows = rows
         self.changeBlocks = changeBlocks
         self.additions = additions
         self.deletions = deletions
+        self.moves = moves
         self.oldMissingFinalNewline = oldMissingFinalNewline
         self.newMissingFinalNewline = newMissingFinalNewline
     }

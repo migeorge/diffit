@@ -7,6 +7,12 @@ public struct DiffOptions: Sendable {
     public var intraLineMaxChangedFraction = 0.7
     /// D cap for the Myers fallback (memory ≈ D² Int32).
     public var myersMaxCost = 2_000
+    /// Pair removed blocks with identical inserted blocks elsewhere and mark both as moved.
+    public var detectMoves = true
+    /// A move must carry at least this many non-whitespace characters in total …
+    public var moveMinimumCharacters = 40
+    /// … and only a line with at least this many non-whitespace characters may start one.
+    public var moveMinimumLineCharacters = 4
 
     public init() {}
 }

@@ -32,6 +32,8 @@ struct SettingsView: View {
             }
             Section("Diff") {
                 Toggle("Highlight changed words within lines", isOn: $settings.intraLineHighlights)
+                Toggle("Detect moved blocks", isOn: $settings.detectMoves)
+                    .onChange(of: settings.detectMoves) { AppModel.shared.reloadAll() }
                 Toggle("Hatch rows with no counterpart", isOn: $settings.showChangeHatch)
                 Toggle("Wrap long lines", isOn: $settings.wrapLines)
                     .disabled(true)

@@ -120,6 +120,8 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
 
     /// New-side line index of each row of the last loaded result, for content-based scroll restore.
     private var newLineOfRow: [Int?] = []
+    /// Move id of each row (nil for most), for counterpart navigation.
+    private var moveIDOfRow: [Int?] = []
 
     /// Rebuilds both panes. With `keepScroll` the row at the top stays in view: by content when
     /// `lineMapping` says where the previous generation's lines went, otherwise by row index.
@@ -131,6 +133,7 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             newColumn.install(.empty(side: .new), font: style.font, showChangeHatch: showChangeHatch)
             changeBlocks = []
             newLineOfRow = []
+            moveIDOfRow = []
             currentBlock = nil
             markerStrip.blocks = []
             markerStrip.rowCount = 0
@@ -144,6 +147,7 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         markerStrip.rowCount = result.rows.count
         let mappedRow = anchor.flatMap { rowFollowingContent(from: $0.line, mapping: lineMapping, rows: result.rows) }
         newLineOfRow = result.rows.map(\.newLine)
+        moveIDOfRow = result.rows.map(\.moveID)
         if let currentBlock, !changeBlocks.indices.contains(currentBlock) { self.currentBlock = nil }
         if let anchor {
             let line = mappedRow ?? min(anchor.line, max(0, result.rows.count - 1))
@@ -161,6 +165,7 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
 
     private static func blockKind(_ rows: ArraySlice<DiffRow>) -> ChangeBlockKind {
         var added = false, removed = false
+        if rows.allSatisfy(\.isMoved) { return .moved }
         for row in rows {
             switch row.kind {
             case .added: added = true
@@ -171,6 +176,26 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             if added && removed { return .modified }
         }
         return added ? .added : .removed
+    }
+
+    // MARK: - Moves
+
+    var currentBlockIsMove: Bool { currentMoveID != nil }
+
+    private var currentMoveID: Int? {
+        guard let currentBlock, changeBlocks.indices.contains(currentBlock) else { return nil }
+        return changeBlocks[currentBlock].lazy.compactMap { self.moveIDOfRow[$0] }.first
+    }
+
+    func jumpToMoveCounterpart() {
+        guard let currentBlock, let id = currentMoveID else { return }
+        let here = changeBlocks[currentBlock]
+        // The other end: a row with the same move id outside the current block.
+        guard let row = moveIDOfRow.indices.first(where: { moveIDOfRow[$0] == id && !here.contains($0) }),
+              let block = changeBlocks.firstIndex(where: { $0.contains(row) }) else { return }
+        newColumn.scroll(toLine: row, offset: anchorOffset)
+        mirrorScroll(from: newColumn)
+        self.currentBlock = block
     }
 
     /// The row in `rows` showing the same new-side content as previous row `row`, via `mapping`.
@@ -263,6 +288,7 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     }
 
     private func publishNavigation() {
-        onNavigationChange?(ChangeNavigationState(current: currentBlock, count: changeBlocks.count))
+        onNavigationChange?(ChangeNavigationState(current: currentBlock, count: changeBlocks.count,
+                                                  currentIsMove: currentBlockIsMove))
     }
 }

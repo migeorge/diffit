@@ -38,6 +38,9 @@ struct DiffItApp: App {
                 Button("Previous Change") { AppModel.shared.activeNavigator?.previousChange() }
                     .keyboardShortcut(.upArrow, modifiers: .command)
                     .disabled(AppModel.shared.changeNavigation.count == 0)
+                Button("Other End of Move") { AppModel.shared.activeNavigator?.jumpToMoveCounterpart() }
+                    .keyboardShortcut("m", modifiers: [.shift, .command])
+                    .disabled(!AppModel.shared.changeNavigation.currentIsMove)
                 Button("Next File") { AppModel.shared.selectNextFile() }
                     .keyboardShortcut(.downArrow, modifiers: [.option, .command])
                     .disabled(AppModel.shared.changeSets.isEmpty)

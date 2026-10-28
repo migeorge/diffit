@@ -2,7 +2,7 @@ import AppKit
 
 /// Kind of a whole change block, for colouring markers.
 enum ChangeBlockKind {
-    case added, removed, modified
+    case added, removed, modified, moved
 }
 
 /// A narrow strip beside the panes showing where every change block sits in the document,
@@ -42,6 +42,7 @@ final class ChangeMarkerStrip: NSView {
             case .added: color = Theme.markerAdded
             case .removed: color = Theme.markerRemoved
             case .modified: color = Theme.markerModified
+            case .moved: color = Theme.markerMoved
             }
             if index == currentBlock {
                 mark = mark.insetBy(dx: -1, dy: -1)

@@ -159,6 +159,11 @@ final class AppModel {
         selection = files[next].id
     }
 
+    /// Re-diffs every loaded file (a diff option changed).
+    func reloadAll() {
+        for entry in allFiles where entry.result != nil { DiffLoader.load(entry) }
+    }
+
     /// Reloads the selected file, starting its watchers if it is over the budget and unwatched.
     func reloadSelected() {
         guard let entry = selectedEntry else { return }

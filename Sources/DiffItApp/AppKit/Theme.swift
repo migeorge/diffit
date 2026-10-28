@@ -19,6 +19,11 @@ enum Theme {
     static let removedGutter = dynamic(light: hex(0xFFF2F2), dark: rgba(255, 90, 90, 0.10))
     static let addedGutter = dynamic(light: hex(0xF0FFF3), dark: rgba(80, 220, 120, 0.10))
 
+    /// Lines that moved elsewhere unchanged: one hue on both sides.
+    static let movedLine = dynamic(light: hex(0xECE8FF), dark: rgba(150, 130, 255, 0.18))
+    static let movedGutter = dynamic(light: hex(0xF3F0FF), dark: rgba(150, 130, 255, 0.11))
+    static let markerMoved = dynamic(light: hex(0x8A70E0), dark: hex(0xA48CFF))
+
     /// Row under the pointer, drawn over the diff tint in both panes.
     static let hoverRow = dynamic(light: rgba(0, 0, 0, 0.05), dark: rgba(255, 255, 255, 0.06))
 
@@ -30,8 +35,9 @@ enum Theme {
     static let viewportIndicator = dynamic(light: rgba(0, 0, 0, 0.07), dark: rgba(255, 255, 255, 0.10))
 
     /// Full-width background for one row on one side; nil for untinted context rows.
-    static func rowBackground(_ kind: RowKind, side: DiffSide, isFiller: Bool) -> NSColor? {
+    static func rowBackground(_ kind: RowKind, side: DiffSide, isFiller: Bool, isMoved: Bool = false) -> NSColor? {
         if isFiller { return filler }
+        if isMoved { return movedLine }
         switch (kind, side) {
         case (.context, _): return nil
         case (.removed, _), (.modified, .old): return removedLine
@@ -40,8 +46,9 @@ enum Theme {
     }
 
     /// Gutter background for one row; nil for untinted context rows.
-    static func gutterRowBackground(_ kind: RowKind, side: DiffSide, isFiller: Bool) -> NSColor? {
+    static func gutterRowBackground(_ kind: RowKind, side: DiffSide, isFiller: Bool, isMoved: Bool = false) -> NSColor? {
         if isFiller { return filler }
+        if isMoved { return movedGutter }
         switch (kind, side) {
         case (.context, _): return nil
         case (.removed, _), (.modified, .old): return removedGutter

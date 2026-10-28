@@ -57,8 +57,11 @@ Files opened by one `git difftool` run are grouped as a changeset in the sidebar
 | Reload the selected file | ⌘R |
 | Reveal the working-tree file in Finder | ⇧⌘R |
 | Open the working-tree file in its default editor | ⇧⌘O |
+| Other end of the current moved block | ⇧⌘M |
 | Close changeset | ⇧⌘W |
-| Settings (font, size, tab width, highlights) | ⌘, |
+| Settings (font, size, tab width, highlights, move detection) | ⌘, |
+
+Lines that moved unchanged to another place in the file are tinted violet at both ends instead of red and green; with such a block current, "Other End of Move" (⇧⌘M) jumps between the two. The detector can be switched off in Settings.
 
 Vertical scrolling is synchronised between the panes; horizontal scrolling is independent. Text in both panes is selectable and searchable with the standard Find bar.
 

@@ -15,6 +15,8 @@ final class AppSettings {
     var fontSize: Double { didSet { changed(Keys.fontSize, fontSize) } }
     var tabWidth: Int { didSet { changed(Keys.tabWidth, tabWidth) } }
     var intraLineHighlights: Bool { didSet { changed(Keys.intraLineHighlights, intraLineHighlights) } }
+    /// Changes the diff itself (not just its rendering); `AppModel` reloads on change.
+    var detectMoves: Bool { didSet { changed(Keys.detectMoves, detectMoves) } }
     var showChangeHatch: Bool { didSet { changed(Keys.showChangeHatch, showChangeHatch) } }
     /// Reserved: the panes clip long lines in v1, so the toggle is shown disabled.
     var wrapLines: Bool { didSet { changed(Keys.wrapLines, wrapLines) } }
@@ -27,6 +29,7 @@ final class AppSettings {
         static let fontSize = "fontSize"
         static let tabWidth = "tabWidth"
         static let intraLineHighlights = "intraLineHighlights"
+        static let detectMoves = "detectMoves"
         static let showChangeHatch = "showChangeHatch"
         static let wrapLines = "wrapLines"
     }
@@ -39,6 +42,7 @@ final class AppSettings {
         let tab = defaults.integer(forKey: Keys.tabWidth)
         tabWidth = Self.tabWidths.contains(tab) ? tab : 4
         intraLineHighlights = defaults.object(forKey: Keys.intraLineHighlights) as? Bool ?? true
+        detectMoves = defaults.object(forKey: Keys.detectMoves) as? Bool ?? true
         showChangeHatch = defaults.object(forKey: Keys.showChangeHatch) as? Bool ?? true
         wrapLines = false
     }
