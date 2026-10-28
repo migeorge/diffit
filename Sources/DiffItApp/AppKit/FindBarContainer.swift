@@ -43,6 +43,12 @@ final class FindBarContainer: NSView, NSTextFinderBarContainer {
         retile()
     }
 
+    /// Optional in the protocol, but some AppKit builds call it without checking
+    /// (`-[... contentView]: unrecognized selector`, seen on macOS 27). It must be a method, not
+    /// a computed property: only the method form answers the ObjC selector. nil: the panes
+    /// highlight matches themselves, so there is nothing for the finder to dim.
+    func contentView() -> NSView? { nil }
+
     /// The bar keeps its own height; the container takes that height while the bar is shown
     /// and collapses to nothing otherwise.
     private func retile() {
