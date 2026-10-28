@@ -46,6 +46,10 @@ enum Theme {
     static let movedGutter = dynamic(light: hex(0xF3F0FF), dark: rgba(150, 130, 255, 0.11))
     static let markerMoved = dynamic(light: hex(0x8A70E0), dark: hex(0xA48CFF))
 
+    /// Find bar matches; the current one is stronger.
+    static let findMatch = dynamic(light: rgba(255, 214, 0, 0.45), dark: rgba(255, 214, 0, 0.30))
+    static let findCurrentMatch = dynamic(light: rgba(255, 140, 0, 0.75), dark: rgba(255, 150, 20, 0.65))
+
     /// Row under the pointer, drawn over the diff tint in both panes.
     static let hoverRow = dynamic(light: rgba(0, 0, 0, 0.05), dark: rgba(255, 255, 255, 0.06))
 

@@ -19,7 +19,11 @@ final class AppModel {
     @ObservationIgnored var onNewChangeSet: (() -> Void)?
 
     /// The pair view currently on screen, so menu commands can drive change navigation.
-    @ObservationIgnored weak var activeNavigator: (any DiffNavigator)?
+    @ObservationIgnored weak var activeNavigator: (any DiffNavigator)? {
+        didSet { hasActiveNavigator = activeNavigator != nil }
+    }
+    /// Observable mirror of `activeNavigator` for menu enabling.
+    var hasActiveNavigator = false
     /// Mirror of the navigator's position for the toolbar indicator and menu enabling.
     var changeNavigation = ChangeNavigationState.none
 

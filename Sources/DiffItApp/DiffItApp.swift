@@ -38,6 +38,20 @@ struct DiffItApp: App {
                 .keyboardShortcut("o", modifiers: [.shift, .command])
                 .disabled(AppModel.shared.selectedEntry?.liveSide == nil)
             }
+            CommandGroup(after: .pasteboard) {
+                Menu("Find") {
+                    Button("Find…") { AppModel.shared.activeNavigator?.performFind(.showFindInterface) }
+                        .keyboardShortcut("f", modifiers: .command)
+                    Button("Find Next") { AppModel.shared.activeNavigator?.performFind(.nextMatch) }
+                        .keyboardShortcut("g", modifiers: .command)
+                    Button("Find Previous") { AppModel.shared.activeNavigator?.performFind(.previousMatch) }
+                        .keyboardShortcut("g", modifiers: [.shift, .command])
+                    Button("Use Selection for Find") { AppModel.shared.activeNavigator?.performFind(.setSearchString) }
+                        .keyboardShortcut("e", modifiers: .command)
+                    Button("Hide Find Bar") { AppModel.shared.activeNavigator?.performFind(.hideFindInterface) }
+                }
+                .disabled(!AppModel.shared.hasActiveNavigator)
+            }
             CommandGroup(before: .sidebar) {
                 Button("Next Change") { AppModel.shared.activeNavigator?.nextChange() }
                     .keyboardShortcut(.downArrow, modifiers: .command)

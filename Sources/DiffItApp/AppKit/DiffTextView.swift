@@ -34,7 +34,65 @@ final class DiffTextView: NSTextView {
     var onHover: ((Int?) -> Void)?
     /// Primary click landed on a row (selection handling continues as usual).
     var onRowClick: ((Int) -> Void)?
+    /// The view became first responder (the pair tracks which pane find should target).
+    var onFocus: (() -> Void)?
     private var hoverTrackingArea: NSTrackingArea?
+
+    // MARK: - Find
+
+    /// Incremental find matches, sorted by location, and the one the finder last selected.
+    /// Highlighted with temporary attributes over the visible rows only (`refreshMatchHighlights`).
+    var matchRanges: [NSRange] = [] {
+        didSet { refreshMatchHighlights() }
+    }
+    var currentMatch: NSRange? {
+        didSet { if currentMatch != oldValue { refreshMatchHighlights() } }
+    }
+    private var highlightedRange = NSRange(location: 0, length: 0)
+
+    /// Character range of the rows intersecting `rect` (view coordinates).
+    func characterRange(forVisibleRect rect: NSRect) -> NSRange {
+        guard let content, content.lineCount > 0 else { return NSRange(location: 0, length: 0) }
+        var first = Int.max, last = -1
+        enumerateLines(in: rect) { line, _ in first = min(first, line); last = max(last, line) }
+        guard first <= last else { return NSRange(location: 0, length: 0) }
+        let start = content.lineStarts[first]
+        let end = last + 1 < content.lineCount ? content.lineStarts[last + 1] : (string as NSString).length
+        return NSRange(location: start, length: max(0, end - start))
+    }
+
+    /// Re-applies match highlights for the rows now on screen. Called on scroll while a find is
+    /// active; a screen's worth of temporary attributes is cheap and needs no layout.
+    func refreshMatchHighlights() {
+        guard let layoutManager else { return }
+        if highlightedRange.length > 0 {
+            layoutManager.removeTemporaryAttribute(.backgroundColor, forCharacterRange: highlightedRange)
+            highlightedRange = NSRange(location: 0, length: 0)
+        }
+        guard !matchRanges.isEmpty || currentMatch != nil else { return }
+        let visible = characterRange(forVisibleRect: visibleRect.insetBy(dx: 0, dy: -visibleRect.height))
+        guard visible.length > 0 else { return }
+        highlightedRange = visible
+        // First match ending inside the visible range (ranges are sorted by location).
+        var low = 0, high = matchRanges.count
+        while low < high {
+            let mid = (low + high) / 2
+            if NSMaxRange(matchRanges[mid]) < visible.location { low = mid + 1 } else { high = mid }
+        }
+        let limit = NSMaxRange(visible)
+        for range in matchRanges[low...] {
+            if range.location >= limit { break }
+            let clipped = NSIntersectionRange(range, visible)
+            guard clipped.length > 0 else { continue }
+            layoutManager.addTemporaryAttribute(.backgroundColor, value: Theme.findMatch, forCharacterRange: clipped)
+        }
+        if let currentMatch, currentMatch.length > 0 {
+            let clipped = NSIntersectionRange(currentMatch, visible)
+            if clipped.length > 0 {
+                layoutManager.addTemporaryAttribute(.backgroundColor, value: Theme.findCurrentMatch, forCharacterRange: clipped)
+            }
+        }
+    }
 
     // MARK: - Setup
 
@@ -46,8 +104,7 @@ final class DiffTextView: NSTextView {
         tv.isRichText = false
         tv.allowsUndo = false
         tv.usesFontPanel = false
-        tv.usesFindBar = true
-        tv.isIncrementalSearchingEnabled = true
+        tv.usesFindBar = false    // the pair shares one find bar; see PaneFindClient
         tv.drawsBackground = true
         tv.backgroundColor = Theme.paneBackground
         tv.isAutomaticQuoteSubstitutionEnabled = false
@@ -81,6 +138,9 @@ final class DiffTextView: NSTextView {
     func install(_ content: DiffPaneContent, font: NSFont) {
         self.content = content
         self.font = font
+        highlightedRange = NSRange(location: 0, length: 0)   // the old text's attributes went with it
+        matchRanges = []
+        currentMatch = nil
         textStorage?.setAttributedString(content.text)
         if let layoutManager, let textContainer {
             layoutManager.ensureLayout(for: textContainer)
@@ -155,6 +215,12 @@ final class DiffTextView: NSTextView {
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
         onHover?(nil)
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        if accepted { onFocus?() }
+        return accepted
     }
 
     override func mouseDown(with event: NSEvent) {

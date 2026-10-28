@@ -75,6 +75,7 @@ final class DiffColumnView: NSView {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.gutter.needsDisplay = true
+                self.textView.refreshMatchHighlights()
                 self.onScroll?(self)
             }
         })

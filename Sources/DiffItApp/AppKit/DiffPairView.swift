@@ -12,6 +12,13 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
     private let oldHeader = PaneHeaderView(sign: "−", tint: .systemRed)
     private let newHeader = PaneHeaderView(sign: "+", tint: .systemGreen)
     private let headerDivider = HeaderDividerView()
+    private let findBar = FindBarContainer()
+    private var oldFinder: PaneFinder?
+    private var newFinder: PaneFinder?
+    /// Whichever finder last showed the bar, so Next/Previous keep working on that pane.
+    private weak var activeFinder: PaneFinder?
+    /// The pane the user last clicked or focused; find targets it.
+    private var focusedColumn: DiffColumnView?
 
     private(set) var changeBlocks: [Range<Int>] = []
     private(set) var currentBlock: Int? {
@@ -43,7 +50,7 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         oldColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
         newColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
         markerStrip.translatesAutoresizingMaskIntoConstraints = false
-        for header in [oldHeader, headerDivider, newHeader] {
+        for header in [findBar, oldHeader, headerDivider, newHeader] {
             header.translatesAutoresizingMaskIntoConstraints = false
             addSubview(header)
         }
@@ -51,8 +58,11 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         addSubview(markerStrip)
         // The headers are pinned to the columns' edges, so they follow the divider as it moves.
         NSLayoutConstraint.activate([
+            findBar.leadingAnchor.constraint(equalTo: leadingAnchor),
+            findBar.trailingAnchor.constraint(equalTo: trailingAnchor),
+            findBar.topAnchor.constraint(equalTo: topAnchor),
             oldHeader.leadingAnchor.constraint(equalTo: leadingAnchor),
-            oldHeader.topAnchor.constraint(equalTo: topAnchor),
+            oldHeader.topAnchor.constraint(equalTo: findBar.bottomAnchor),
             oldHeader.heightAnchor.constraint(equalToConstant: PaneHeaderView.height),
             oldHeader.trailingAnchor.constraint(equalTo: oldColumn.trailingAnchor),
             headerDivider.leadingAnchor.constraint(equalTo: oldHeader.trailingAnchor),
@@ -82,7 +92,46 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
         for column in [oldColumn, newColumn] {
             column.textView.onHover = { [weak self] row in self?.setHoverRow(row) }
             column.textView.onRowClick = { [weak self] row in self?.focusBlock(containing: row) }
+            column.textView.onFocus = { [weak self, weak column] in self?.focusedColumn = column }
         }
+        findBar.onVisibilityChange = { [weak self] visible in
+            guard let self, !visible else { return }
+            self.activeFinder?.clearHighlights()
+            self.activeFinder = nil
+            self.window?.makeFirstResponder((self.focusedColumn ?? self.newColumn).textView)
+        }
+        oldFinder = PaneFinder(column: oldColumn, container: findBar) { [weak self] row in self?.reveal(row, in: self?.oldColumn) }
+        newFinder = PaneFinder(column: newColumn, container: findBar) { [weak self] row in self?.reveal(row, in: self?.newColumn) }
+    }
+
+    // MARK: - Find
+
+    func performFind(_ action: NSTextFinder.Action) {
+        let focused = (focusedColumn === oldColumn ? oldFinder : newFinder)
+        let target: PaneFinder?
+        switch action {
+        case .showFindInterface, .setSearchString, .showReplaceInterface:
+            target = focused
+        default:
+            target = activeFinder ?? focused   // Next / Previous stay with the pane whose bar is up
+        }
+        guard let target else { return }
+        if let activeFinder, activeFinder !== target {
+            activeFinder.finder.performAction(.hideFindInterface)
+            activeFinder.clearHighlights()
+        }
+        activeFinder = target
+        target.finder.performAction(action)
+    }
+
+    /// Scrolls both panes so `row` is in view, unless it already is.
+    private func reveal(_ row: Int, in column: DiffColumnView?) {
+        guard let column else { return }
+        let clip = column.clipView.bounds
+        let rowRect = column.textView.rowRect(row)
+        if rowRect.minY >= clip.minY, rowRect.maxY <= clip.maxY { return }
+        column.scroll(toLine: row, offset: anchorOffset)
+        mirrorScroll(from: column)
     }
 
     // MARK: - Hover and click

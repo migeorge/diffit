@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// Change-to-change navigation exposed by the live pair view so menu commands and the toolbar
 /// can reach it.
@@ -14,6 +14,8 @@ protocol DiffNavigator: AnyObject {
     var currentBlockIsMove: Bool { get }
     /// Jumps from one end of the current block's move to the other.
     func jumpToMoveCounterpart()
+    /// Find bar actions (show, next, previous, use selection…) for the focused pane.
+    func performFind(_ action: NSTextFinder.Action)
 }
 
 /// Snapshot of the navigator for SwiftUI (the toolbar indicator).
