@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "DiffIt",
-    platforms: [.macOS("26.0")],
+    platforms: [.macOS("15.0")],
     products: [
         .executable(name: "DiffItApp", targets: ["DiffItApp"]),
         .executable(name: "diffit", targets: ["diffit"]),

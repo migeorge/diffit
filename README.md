@@ -6,7 +6,7 @@ A native macOS `git difftool` for reading code changes, especially the ones an A
 - Original on the left, changed on the right, aligned row by row, with full-width red/green tints and word-level highlights.
 - The working-tree side is watched: save in your editor (or let an agent keep editing) and the diff updates in place, keeping its scroll position.
 - View only. Nothing in the app can write to your files.
-- Swift, SwiftUI and AppKit. No Electron, no web views. macOS 26 or later.
+- Swift, SwiftUI and AppKit. No Electron, no web views. macOS 15 (Sequoia) or later.
 
 ![DiffIt in dark mode](docs/screenshot-dark.png)
 
@@ -14,7 +14,7 @@ A native macOS `git difftool` for reading code changes, especially the ones an A
 
 ## Download
 
-Requires macOS 26. Get `DiffIt-<version>.zip` from the [latest release](https://github.com/migeorge/diffit/releases/latest), unzip it, and drag `DiffIt.app` to /Applications. The build is universal (Apple silicon and Intel).
+Requires macOS 15 (Sequoia) or later; developed and tested on macOS 26. Get `DiffIt-<version>.zip` from the [latest release](https://github.com/migeorge/diffit/releases/latest), unzip it, and drag `DiffIt.app` to /Applications. The build is universal (Apple silicon and Intel).
 
 The app is not signed with an Apple Developer ID, so macOS will refuse to open it at first ("Apple could not verify DiffIt is free of malware"). Safari and other browsers tag downloads with a quarantine attribute, and Gatekeeper rejects unsigned quarantined apps. Clear that attribute once, from Terminal:
 

@@ -8,7 +8,7 @@ Native macOS git difftool for reviewing code changes, especially ones made by AI
 - **Native.** Swift + SwiftUI shell + AppKit `NSTextView` panes. No Electron, no web views, no third-party UI frameworks.
 - **CLI returns immediately.** `diffit` must snapshot git's temp files and hand off to the app in < 30 ms when the app is running. git deletes `$LOCAL`/`$REMOTE` temp files the moment the CLI exits.
 - **Original on the left, changed on the right.**
-- **macOS 26 only**, SwiftPM only (no `.xcodeproj` committed), Swift language mode 5.
+- **macOS 15 or later** (developed and tested on 26; nothing newer than the 14 SDK is used), SwiftPM only (no `.xcodeproj` committed), Swift language mode 5.
 
 ## Layout
 
