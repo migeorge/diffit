@@ -54,7 +54,7 @@ diffit OLD NEW               # compare two files without git
 diffit /dev/null NEW         # an added file
 ```
 
-Files opened by one `git difftool` run are grouped as a changeset in the sidebar. Close a changeset with the ⓧ in its header or ⌥⌘W. The app stays running after you close the window so the next `git difftool` opens instantly.
+Files opened by one `git difftool` run are grouped as a changeset in the sidebar. Close a changeset with the ⓧ in its header or ⌥⌘W. Closing the window quits the app (its cached snapshots go with it); the next `git difftool` launches it again.
 
 ### Tabs
 

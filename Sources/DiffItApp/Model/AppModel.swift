@@ -200,6 +200,7 @@ final class AppModel {
             if watchedCount < Self.watcherLimit { startWatching(entry) }
             if firstEntry == nil { firstEntry = entry }
         }
+        if changeSet.structureKey != structureBefore { liftSidebarHighlight() }
 
         if isNew {
             selection = changeSet.orderedFiles.first?.id ?? firstEntry?.id
@@ -229,6 +230,10 @@ final class AppModel {
         if tabs.isEmpty {
             selection = changeSets.first?.orderedFiles.first?.id
         }
+    }
+
+    func closeAllChangeSets() {
+        for changeSet in changeSets { close(changeSet) }
     }
 
     func closeSelectedChangeSet() {

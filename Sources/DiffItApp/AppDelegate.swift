@@ -51,12 +51,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    /// Closing the diff window quits: an app left running in the background would go on
+    /// collecting changesets nobody looks at. The CLI relaunches it for the next diff.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        false
+        true
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         AppModel.shared.stopAllWatchers()
+        // Nothing will show this session's snapshots again; delete them (the app's own cache).
+        AppModel.shared.closeAllChangeSets()
         ipcServer?.stop()
     }
 
