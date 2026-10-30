@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Open files across the top of the detail area. Click to switch, double-click to keep a
@@ -22,7 +23,8 @@ struct TabBarView: View {
             }
         }
         .frame(height: Self.height)
-        .background(.bar)
+        // The strip's scroll view reaches up under the toolbar; the backgrounds must not.
+        .background(.bar, ignoresSafeAreaEdges: [])
     }
 
     static let height: CGFloat = 30
@@ -53,15 +55,20 @@ private struct TabItem: View {
         .padding(.leading, 12)
         .padding(.trailing, 6)
         .frame(minWidth: 110, maxWidth: 240, maxHeight: .infinity)
-        .background(isActive ? Color(nsColor: .textBackgroundColor) : .clear)
+        .background(isActive ? Color(nsColor: .textBackgroundColor) : .clear, ignoresSafeAreaEdges: [])
         .overlay(alignment: .top) {
             if isActive { Color.accentColor.frame(height: 2) }
         }
         .overlay(alignment: .trailing) { Divider() }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        .onTapGesture(count: 2) { model.pinTab(tab.id) }
-        .onTapGesture { model.activateTab(tab.id) }
+        // One tap gesture only. With a separate double-tap gesture SwiftUI holds the single tap
+        // until the double-click interval has passed, so a click looked dead and a second click
+        // pinned instead of switching. The click count comes from the mouse-up event instead.
+        .onTapGesture {
+            model.activateTab(tab.id)
+            if let count = NSApp.currentEvent?.clickCount, count >= 2 { model.pinTab(tab.id) }
+        }
         .contextMenu {
             Button("Close Tab") { model.closeTab(tab.id) }
             Button("Close Other Tabs") { model.closeOtherTabs(than: tab.id) }
