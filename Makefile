@@ -1,7 +1,7 @@
 APP      = DiffIt
 BUNDLE   = dev.diffit.app
 BUILD    = .build/release
-UNIVERSAL = .build/apple/Products/Release
+UNIVERSAL = build/universal
 APPDIR   = build/$(APP).app
 VERSION ?= 0.2.2
 DIST     = build/$(APP)-$(VERSION).zip
@@ -28,8 +28,17 @@ install: app      ## copy to /Applications
 	rm -rf /Applications/$(APP).app && cp -R $(APPDIR) /Applications/
 
 # Ad-hoc signed, not notarized: README explains clearing the quarantine flag after download.
+# One slice per build and lipo: `swift build --arch a --arch b` needs Xcode's xcbuild, which the
+# Command Line Tools alone do not provide. The Intel slice gets its own scratch path; two triples
+# in one .build share a build database and trip over each other.
+INTEL = .build/x86_64
 dist:             ## universal (arm64 + x86_64) DiffIt.app zipped for a GitHub release
-	swift build -c release --arch arm64 --arch x86_64
+	swift build -c release
+	swift build -c release --triple x86_64-apple-macosx --scratch-path $(INTEL)
+	mkdir -p $(UNIVERSAL)
+	for bin in DiffItApp diffit; do \
+	  lipo -create -output $(UNIVERSAL)/$$bin $(BUILD)/$$bin $(INTEL)/release/$$bin; \
+	done
 	$(MAKE) bundle BUILD=$(UNIVERSAL)
 	rm -f $(DIST) && ditto -c -k --keepParent $(APPDIR) $(DIST)
 	@echo "wrote $(DIST)"
