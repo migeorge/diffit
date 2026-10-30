@@ -17,6 +17,12 @@ struct SidebarView: View {
                     ForEach(changeSet.tree) { node in
                         FileTreeNodeView(node: node, scope: changeSet.id.uuidString, collapsed: $collapsed)
                     }
+                    if changeSet.files.isEmpty, changeSet.tracker != nil {
+                        // Still following the repository; the comparison is just empty right now.
+                        Text("No changes")
+                            .foregroundStyle(.secondary)
+                            .selectionDisabled()
+                    }
                 } header: {
                     ChangeSetHeader(changeSet: changeSet)
                 }
@@ -44,6 +50,11 @@ private struct ChangeSetHeader: View {
             Spacer(minLength: 4)
             if changeSet.isLoading {
                 ProgressView().controlSize(.mini)
+            }
+            if let error = changeSet.trackingError {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                    .help("Not following the repository: \(error)")
             }
             DiffCounts(additions: changeSet.additions, deletions: changeSet.deletions)
             Button {

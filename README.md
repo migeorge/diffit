@@ -5,6 +5,7 @@ A native macOS `git difftool` for reading code changes, especially the ones an A
 - `git difftool` hands every changed file to a tiny CLI that returns in a few milliseconds; the app collects them all into one window with a file tree.
 - Original on the left, changed on the right, aligned row by row, with full-width red/green tints and word-level highlights.
 - The working-tree side is watched: save in your editor (or let an agent keep editing) and the diff updates in place, keeping its scroll position.
+- The whole comparison is live too: after `git difftool`, files that are added, deleted, modified, staged or reverted in the repository appear in, change in, or leave the sidebar on their own.
 - View only. Nothing in the app can write to your files.
 - Swift, SwiftUI and AppKit. No Electron, no web views. macOS 15 (Sequoia) or later.
 
@@ -55,6 +56,8 @@ diffit /dev/null NEW         # an added file
 ```
 
 Files opened by one `git difftool` run are grouped as a changeset in the sidebar. Close a changeset with the ⓧ in its header or ⌥⌘W. Closing the window quits the app (its cached snapshots go with it); the next `git difftool` launches it again.
+
+A changeset keeps following its repository: the same comparison you asked for (`git difftool`, `git difftool --cached`, `git difftool main...`, with or without paths) is re-run whenever something in the repository changes, so a file an agent creates, deletes or edits shows up, a file you stage or revert leaves the working-tree view, and a new `git difftool` run of the same comparison replaces the old changeset instead of stacking a second one. Untracked files count as added when the working tree is a side of the comparison. A warning triangle in the changeset header means the comparison could not be repeated (hover it for the reason). The behaviour can be turned off in Settings ▸ Diff.
 
 ### Tabs
 
@@ -131,6 +134,7 @@ Vertical scrolling is synchronised between the panes; horizontal scrolling is in
 - The app diffs with a patience algorithm (Myers fallback) in `DiffCore`, builds side-by-side rows, and refines modified lines at the word level.
 - Each pane is an `NSTextView` with every row pinned to the same height, so row alignment and scroll sync are plain arithmetic. 50 000-line files open in well under a second.
 - A kqueue watcher per working-tree file reloads the diff on write, atomic save, or rename.
+- The CLI reads its parent processes' arguments (a few `sysctl` calls, no subprocess) to learn which `git diff` git is running, and passes them to the app. An FSEvents stream on the repository root then triggers `git diff --raw` with the same arguments; base versions are read with `git cat-file` into the cache. git is only ever read from (`GIT_OPTIONAL_LOCKS=0`, so it does not even refresh the index).
 - Syntax colours are computed with the diff, off the main thread: a line-by-line lexer per language (`SyntaxHighlight`) carries a small state across lines (open comment, string, fenced block) and emits coloured runs, which `DiffTextBuilder` applies as plain attributed-string colours. The panes stay the same fixed-height `NSTextView`s. Highlighting 25 000 lines of Go takes about 0.3 s.
 
 ## Build from source

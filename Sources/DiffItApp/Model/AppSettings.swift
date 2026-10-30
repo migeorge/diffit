@@ -20,6 +20,8 @@ final class AppSettings {
     /// Computed with the diff, so `AppModel` reloads on change.
     var syntaxHighlighting: Bool { didSet { changed(Keys.syntaxHighlighting, syntaxHighlighting) } }
     var showChangeHatch: Bool { didSet { changed(Keys.showChangeHatch, showChangeHatch) } }
+    /// Changesets from `git difftool` follow the repository (`RepoTracker`); `AppModel` reacts.
+    var trackRepository: Bool { didSet { changed(Keys.trackRepository, trackRepository) } }
     /// Reserved: the panes clip long lines in v1, so the toggle is shown disabled.
     var wrapLines: Bool { didSet { changed(Keys.wrapLines, wrapLines) } }
 
@@ -34,6 +36,7 @@ final class AppSettings {
         static let detectMoves = "detectMoves"
         static let syntaxHighlighting = "syntaxHighlighting"
         static let showChangeHatch = "showChangeHatch"
+        static let trackRepository = "trackRepository"
         static let wrapLines = "wrapLines"
     }
 
@@ -48,6 +51,7 @@ final class AppSettings {
         detectMoves = defaults.object(forKey: Keys.detectMoves) as? Bool ?? true
         syntaxHighlighting = defaults.object(forKey: Keys.syntaxHighlighting) as? Bool ?? true
         showChangeHatch = defaults.object(forKey: Keys.showChangeHatch) as? Bool ?? true
+        trackRepository = defaults.object(forKey: Keys.trackRepository) as? Bool ?? true
         wrapLines = false
     }
 

@@ -33,7 +33,7 @@ public struct FileMessage: Codable, Equatable, Sendable {
 
 /// Newline-delimited JSON, UTF-8, one request per connection.
 public struct OpenMessage: Codable, Equatable, Sendable {
-    public static let currentVersion = 1
+    public static let currentVersion = 2
 
     public var version: Int
     /// Repo root (or cwd) — groups invocations.
@@ -47,9 +47,14 @@ public struct OpenMessage: Codable, Equatable, Sendable {
     /// Directory the CLI created; the app deletes it when the changeset closes.
     public var snapshotDirectory: String?
     public var files: [FileMessage]
+    /// The arguments of the `git diff` behind this run (everything after the subcommand), when
+    /// git invoked the CLI. The app runs the same comparison again to keep the changeset in step
+    /// with the repository; nil for hand-run comparisons.
+    public var gitDiffArguments: [String]?
 
     public init(version: Int = OpenMessage.currentVersion, changeSetKey: String, changeSetTitle: String,
-                startsNewChangeSet: Bool, expectedCount: Int?, snapshotDirectory: String?, files: [FileMessage]) {
+                startsNewChangeSet: Bool, expectedCount: Int?, snapshotDirectory: String?, files: [FileMessage],
+                gitDiffArguments: [String]? = nil) {
         self.version = version
         self.changeSetKey = changeSetKey
         self.changeSetTitle = changeSetTitle
@@ -57,6 +62,7 @@ public struct OpenMessage: Codable, Equatable, Sendable {
         self.expectedCount = expectedCount
         self.snapshotDirectory = snapshotDirectory
         self.files = files
+        self.gitDiffArguments = gitDiffArguments
     }
 }
 

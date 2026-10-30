@@ -93,11 +93,11 @@ enum Git {
     private static var isAvailable: Bool { executable != nil }
 
     /// First `git` on PATH, then the usual install locations (the app launches us with a minimal
-    /// PATH), then the Xcode shim.
+    /// PATH), the Command Line Tools, then the Xcode shim.
     private static let executable: String? = {
         let path = ProcessInfo.processInfo.environment["PATH"] ?? ""
         let candidates = path.split(separator: ":").map { "\($0)/git" }
-            + ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
+            + ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/Library/Developer/CommandLineTools/usr/bin/git", "/usr/bin/git"]
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }()
 }

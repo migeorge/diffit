@@ -8,6 +8,12 @@ final class ChangeSet: Identifiable {
     var title: String
     let createdAt: Date
     var expectedCount: Int?
+    /// The `git diff` arguments of the run that created this changeset; nil when it was not git
+    /// that invoked the CLI. With them the changeset follows the repository (`RepoTracker`).
+    let gitDiffArguments: [String]?
+    var tracker: RepoTracker?
+    /// Why the changeset is not following the repository, when it should be.
+    var trackingError: String?
     var files: [FileEntry] = []
     /// Directories the CLI created for this changeset; deleted when it closes.
     var snapshotDirectories: Set<String> = []
@@ -19,11 +25,12 @@ final class ChangeSet: Identifiable {
     /// parents, drawing stale rows over live ones.
     private(set) var structureKey = ""
 
-    init(key: String, title: String, createdAt: Date = Date(), expectedCount: Int?) {
+    init(key: String, title: String, createdAt: Date = Date(), expectedCount: Int?, gitDiffArguments: [String]? = nil) {
         self.key = key
         self.title = title
         self.createdAt = createdAt
         self.expectedCount = expectedCount
+        self.gitDiffArguments = gitDiffArguments
     }
 
     var additions: Int { files.reduce(0) { $0 + $1.additions } }
@@ -39,9 +46,20 @@ final class ChangeSet: Identifiable {
         } else {
             files.append(entry)
         }
+        rebuildTree()
+        return replaced
+    }
+
+    /// Drops an entry (its file left the comparison) and rebuilds the tree.
+    func remove(_ entry: FileEntry) {
+        guard let index = files.firstIndex(where: { $0.id == entry.id }) else { return }
+        files.remove(at: index)
+        rebuildTree()
+    }
+
+    private func rebuildTree() {
         tree = FileTreeBuilder.build(files)
         structureKey = FileTreeBuilder.structureKey(tree)
-        return replaced
     }
 
     /// Files in sidebar (tree) order, for next/previous navigation.

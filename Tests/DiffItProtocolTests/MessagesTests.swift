@@ -12,7 +12,8 @@ import Testing
                             old: FileSide(path: "/tmp/snap/1-old-a.swift", isLive: false, label: "Original"),
                             new: FileSide(path: "/Users/x/repo/src/a.swift", isLive: true, label: "Working copy")),
                 FileMessage(displayPath: "added.txt", old: nil, new: FileSide(path: "/x", isLive: true, label: "Working copy")),
-            ]
+            ],
+            gitDiffArguments: ["HEAD", "--", "src"]
         )
         let line = try Wire.encodeLine(message)
         #expect(line.last == 0x0A)
@@ -20,6 +21,12 @@ import Testing
         let decoded = try Wire.decode(OpenMessage.self, from: line.dropLast())
         #expect(decoded == message)
         #expect(decoded.version == OpenMessage.currentVersion)
+    }
+
+    @Test func gitDiffArgumentsAreOptional() throws {
+        let json = #"{"version":2,"changeSetKey":"/r","changeSetTitle":"r","startsNewChangeSet":true,"files":[]}"#
+        let decoded = try Wire.decode(OpenMessage.self, from: Data(json.utf8))
+        #expect(decoded.gitDiffArguments == nil)
     }
 
     @Test func slashesAreNotEscaped() throws {

@@ -37,6 +37,10 @@ final class FileEntry: Identifiable {
 
     /// Watchers for the live sides; empty until `AppModel` starts them.
     @ObservationIgnored var watchers: [FileWatcher] = []
+    /// git blob ids of the snapshot sides, when known (set by the repository tracker, or hashed
+    /// from the CLI's snapshots on its first refresh); nil for live sides.
+    @ObservationIgnored var oldBlob: String?
+    @ObservationIgnored var newBlob: String?
     var isWatched: Bool { !watchers.isEmpty }
 
     init(displayPath: String, old: FileSide?, new: FileSide?) {

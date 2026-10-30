@@ -3,7 +3,7 @@ BUNDLE   = dev.diffit.app
 BUILD    = .build/release
 UNIVERSAL = build/universal
 APPDIR   = build/$(APP).app
-VERSION ?= 0.2.2
+VERSION ?= 0.3.0
 DIST     = build/$(APP)-$(VERSION).zip
 
 .PHONY: build app bundle dist install test run
@@ -46,7 +46,7 @@ dist:             ## universal (arm64 + x86_64) DiffIt.app zipped for a GitHub r
 # The Command Line Tools ship Swift Testing outside the default search path;
 # without Xcode, `swift test` needs to be told where it is (see DECISIONS.md).
 CLT_FRAMEWORKS = /Library/Developer/CommandLineTools/Library/Developer/Frameworks
-TEST_FLAGS = -Xswiftc -F$(CLT_FRAMEWORKS) -Xswiftc -Xfrontend -Xswiftc -disable-cross-import-overlays -Xlinker -rpath -Xlinker $(CLT_FRAMEWORKS)
+TEST_FLAGS = -Xswiftc -F$(CLT_FRAMEWORKS) -Xswiftc -Xfrontend -Xswiftc -disable-cross-import-overlays -Xlinker -rpath -Xlinker $(CLT_FRAMEWORKS) -Xlinker -rpath -Xlinker $(CLT_FRAMEWORKS)/../usr/lib
 
 test:             ## run the unit tests (pass FILTER=Perf to select a suite)
 	swift test $(TEST_FLAGS) $(if $(FILTER),--filter $(FILTER),)

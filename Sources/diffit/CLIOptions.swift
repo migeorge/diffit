@@ -23,7 +23,7 @@ enum Command {
 }
 
 struct CLIOptions {
-    static let version = "0.2.1"
+    static let version = "0.3.0"
 
     var command: Command = .activate
     var oldLabel: String?

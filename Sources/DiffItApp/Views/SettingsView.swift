@@ -39,6 +39,8 @@ struct SettingsView: View {
                     .onChange(of: settings.syntaxHighlighting) { AppModel.shared.reloadAll() }
                     .help("Colours code by language (\(SyntaxLanguage.allCases.count) languages, by file extension).")
                 Toggle("Hatch rows with no counterpart", isOn: $settings.showChangeHatch)
+                Toggle("Follow the repository after git difftool", isOn: $settings.trackRepository)
+                    .onChange(of: settings.trackRepository) { AppModel.shared.trackingPreferenceChanged() }
                 Toggle("Wrap long lines", isOn: $settings.wrapLines)
                     .disabled(true)
                     .help("Not available yet: long lines scroll horizontally.")

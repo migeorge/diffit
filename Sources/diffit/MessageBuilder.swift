@@ -41,7 +41,8 @@ struct MessageBuilder {
             startsNewChangeSet: counter == nil || counter == 1,
             expectedCount: total,
             snapshotDirectory: snapshotter.directory?.path,
-            files: [file]
+            files: [file],
+            gitDiffArguments: GitInvocation.diffArguments()
         )
     }
 
@@ -65,7 +66,8 @@ struct MessageBuilder {
             startsNewChangeSet: true,
             expectedCount: files.count,
             snapshotDirectory: snapshotter.directory?.path,
-            files: files
+            files: files,
+            gitDiffArguments: GitInvocation.diffArguments()
         )
     }
 

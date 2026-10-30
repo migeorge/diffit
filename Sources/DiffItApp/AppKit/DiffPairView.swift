@@ -258,10 +258,13 @@ final class DiffPairView: NSView, DiffNavigator, NSSplitViewDelegate {
             newColumn.scroll(toLine: line, offset: anchor.offset)
             mirrorScroll(from: newColumn)
             updateCurrentBlock()
-        } else {
+        } else if changeBlocks.isEmpty {
             newColumn.setVerticalOrigin(0)
             oldColumn.setVerticalOrigin(0)
             currentBlock = nil
+        } else {
+            // A freshly opened file starts at its first change, which is the current one.
+            scrollToChangeBlock(0)
         }
         updateViewportIndicator()
         publishNavigation()

@@ -179,9 +179,17 @@ final class AppModel {
         } else {
             changeSet = ChangeSet(key: message.changeSetKey,
                                   title: Self.title(message.changeSetTitle, at: Date()),
-                                  expectedCount: message.expectedCount)
+                                  expectedCount: message.expectedCount,
+                                  gitDiffArguments: message.gitDiffArguments)
+            // A re-run of the same comparison replaces the earlier changeset: both would follow
+            // the same files.
+            if let arguments = message.gitDiffArguments {
+                let duplicates = changeSets.filter { $0.key == message.changeSetKey && $0.gitDiffArguments == arguments }
+                for duplicate in duplicates { close(duplicate) }
+            }
             changeSets.insert(changeSet, at: 0)
             isNew = true
+            startTracking(changeSet)
         }
         if let dir = message.snapshotDirectory { changeSet.snapshotDirectories.insert(dir) }
         if let count = message.expectedCount { changeSet.expectedCount = count }
@@ -190,17 +198,13 @@ final class AppModel {
         let structureBefore = changeSet.structureKey
         for file in message.files {
             let entry = FileEntry(displayPath: file.displayPath, old: file.old, new: file.new)
-            if let replaced = changeSet.upsert(entry) {
-                stopWatching(replaced)
-                // A tab showing the replaced file shows its replacement.
-                for index in tabs.indices where tabs[index].entryID == replaced.id { tabs[index].entryID = entry.id }
-                if selection == replaced.id { selection = entry.id }
-            }
-            DiffLoader.load(entry)
-            if watchedCount < Self.watcherLimit { startWatching(entry) }
+            install(entry, in: changeSet)
             if firstEntry == nil { firstEntry = entry }
         }
         if changeSet.structureKey != structureBefore { liftSidebarHighlight() }
+        if let expected = changeSet.expectedCount, changeSet.files.count >= expected {
+            changeSet.tracker?.runCompleted()
+        }
 
         if isNew {
             selection = changeSet.orderedFiles.first?.id ?? firstEntry?.id
@@ -213,6 +217,86 @@ final class AppModel {
         "\(base) · \(date.formatted(date: .omitted, time: .shortened))"
     }
 
+    /// Adds `entry` to the changeset, loads it and watches its live sides. A tab or the selection
+    /// on the entry it replaces (same path) moves over to it.
+    private func install(_ entry: FileEntry, in changeSet: ChangeSet) {
+        if let replaced = changeSet.upsert(entry) {
+            stopWatching(replaced)
+            for index in tabs.indices where tabs[index].entryID == replaced.id { tabs[index].entryID = entry.id }
+            if selection == replaced.id { selection = entry.id }
+        }
+        DiffLoader.load(entry)
+        if watchedCount < Self.watcherLimit { startWatching(entry) }
+    }
+
+    /// Removes `entry` from its changeset along with any tab showing it. If it was selected,
+    /// the selection moves to the file after it in the sidebar (or the one before).
+    private func remove(_ entry: FileEntry, from changeSet: ChangeSet) {
+        var neighbour: FileEntry?
+        if selection == entry.id {
+            let ordered = changeSet.orderedFiles
+            if let index = ordered.firstIndex(where: { $0.id == entry.id }) {
+                neighbour = index + 1 < ordered.count ? ordered[index + 1] : (index > 0 ? ordered[index - 1] : nil)
+            }
+        }
+        stopWatching(entry)
+        changeSet.remove(entry)
+        removeTabs(for: [entry])
+        if selection == entry.id { selection = activeTab?.entryID ?? neighbour?.id }
+    }
+
+    // MARK: - Repository tracking
+
+    private func startTracking(_ changeSet: ChangeSet) {
+        guard AppSettings.shared.trackRepository, changeSet.tracker == nil,
+              let arguments = changeSet.gitDiffArguments else { return }
+        let tracker = RepoTracker(changeSet: changeSet, root: changeSet.key, arguments: arguments)
+        changeSet.tracker = tracker
+        tracker.start()
+    }
+
+    /// The Settings toggle changed: start or stop following for every changeset.
+    func trackingPreferenceChanged() {
+        for changeSet in changeSets {
+            if AppSettings.shared.trackRepository {
+                startTracking(changeSet)
+            } else {
+                changeSet.tracker?.stop()
+                changeSet.tracker = nil
+                changeSet.trackingError = nil
+            }
+        }
+    }
+
+    /// What the comparison contains now, from the changeset's tracker: entries that still match
+    /// stay (keeping their panes and scroll positions), the rest are replaced, added or removed.
+    func apply(_ items: [RepoTracker.Item], to changeSet: ChangeSet, root: String, snapshotDirectory: URL) {
+        let structureBefore = changeSet.structureKey
+        let wanted = Set(items.map(\.path))
+        for entry in changeSet.files where !wanted.contains(entry.displayPath) {
+            remove(entry, from: changeSet)
+        }
+        for item in items {
+            if let existing = changeSet.files.first(where: { $0.displayPath == item.path }), item.matches(existing) {
+                continue
+            }
+            let old = item.oldBlob.map {
+                FileSide(path: snapshotDirectory.appendingPathComponent($0).path, isLive: false, label: "Original")
+            }
+            let new: FileSide?
+            switch item.new {
+            case .none: new = nil
+            case .live: new = FileSide(path: root + "/" + item.path, isLive: true, label: "Working copy")
+            case .blob(let sha): new = FileSide(path: snapshotDirectory.appendingPathComponent(sha).path, isLive: false, label: "Changed")
+            }
+            let entry = FileEntry(displayPath: item.path, old: old, new: new)
+            entry.oldBlob = item.oldBlob
+            if case .blob(let sha) = item.new { entry.newBlob = sha }
+            install(entry, in: changeSet)
+        }
+        if changeSet.structureKey != structureBefore { liftSidebarHighlight() }
+    }
+
     // MARK: - Closing
 
     /// Removes the changeset, stops its watchers and deletes its snapshot directories
@@ -220,6 +304,8 @@ final class AppModel {
     func close(_ changeSet: ChangeSet) {
         guard let index = changeSets.firstIndex(where: { $0.id == changeSet.id }) else { return }
         changeSets.remove(at: index)
+        changeSet.tracker?.stop()
+        changeSet.tracker = nil
         for entry in changeSet.files { stopWatching(entry) }
         removeTabs(for: changeSet.files)
         let fm = FileManager.default
