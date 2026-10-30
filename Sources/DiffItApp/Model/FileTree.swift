@@ -65,6 +65,19 @@ enum FileTreeBuilder {
         return result
     }
 
+    /// The directory ids of `nodes`, in order; equal for two trees with the same directories.
+    static func structureKey(_ nodes: [FileTreeNode]) -> String {
+        var ids: [String] = []
+        func walk(_ nodes: [FileTreeNode]) {
+            for node in nodes where node.isDirectory {
+                ids.append(node.id)
+                walk(node.children ?? [])
+            }
+        }
+        walk(nodes)
+        return ids.joined(separator: "\n")
+    }
+
     private static func caseInsensitiveLess(_ a: String, _ b: String) -> Bool {
         let order = a.caseInsensitiveCompare(b)
         return order == .orderedAscending || (order == .orderedSame && a < b)

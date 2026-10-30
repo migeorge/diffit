@@ -13,6 +13,11 @@ final class ChangeSet: Identifiable {
     var snapshotDirectories: Set<String> = []
     /// Rebuilt when `files` changes.
     private(set) var tree: [FileTreeNode] = []
+    /// Changes whenever a directory node appears, disappears or is renamed (compressed chains
+    /// split as siblings arrive). The sidebar rebuilds the changeset's rows on such a change
+    /// instead of diffing them: the outline view leaves rows behind when nodes move between
+    /// parents, drawing stale rows over live ones.
+    private(set) var structureKey = ""
 
     init(key: String, title: String, createdAt: Date = Date(), expectedCount: Int?) {
         self.key = key
@@ -35,6 +40,7 @@ final class ChangeSet: Identifiable {
             files.append(entry)
         }
         tree = FileTreeBuilder.build(files)
+        structureKey = FileTreeBuilder.structureKey(tree)
         return replaced
     }
 

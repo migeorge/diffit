@@ -6,8 +6,12 @@ struct SidebarView: View {
     @State private var collapsed: Set<String> = []
 
     var body: some View {
-        @Bindable var model = model
-        List(selection: $model.selection) {
+        // Selection goes through the model (see `AppModel.sidebarSelection`); read here, in the
+        // body, so the view follows it. The list writes nil when rows it had selected are rebuilt;
+        // deselecting is not a feature here, so nil is ignored.
+        let highlighted = model.sidebarSelection
+        let selection = Binding(get: { highlighted }, set: { if let id = $0 { model.selection = id } })
+        List(selection: selection) {
             ForEach(model.changeSets) { changeSet in
                 Section {
                     ForEach(changeSet.tree) { node in
@@ -16,6 +20,10 @@ struct SidebarView: View {
                 } header: {
                     ChangeSetHeader(changeSet: changeSet)
                 }
+                // New identity when the directories change, so the rows are rebuilt rather than
+                // diffed (see `ChangeSet.structureKey`). Files joining an existing directory
+                // still update in place.
+                .id(changeSet.id.uuidString + changeSet.structureKey)
             }
         }
         .listStyle(.sidebar)
@@ -70,6 +78,9 @@ private struct FileTreeNodeView: View {
                 }
             } label: {
                 Label(node.name, systemImage: "folder")
+                    // Only files are selectable; a folder row neither highlights nor changes the
+                    // selection. On the label, not the group: there it would cover the children too.
+                    .selectionDisabled()
             }
         } else if let entry = node.entry {
             FileRow(entry: entry)

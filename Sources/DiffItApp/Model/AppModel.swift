@@ -17,6 +17,25 @@ final class AppModel {
         }
     }
 
+    /// The sidebar's highlighted row: `selection`, except for a moment after a changeset's tree
+    /// restructured (a compressed directory chain splitting as files arrive). The outline view
+    /// leaves a stale copy of the selected row behind when that row moves with the
+    /// restructuring, so the highlight is lifted while the rows change and put back once they
+    /// have settled; `selection` and the open tab are unaffected.
+    var sidebarSelection: FileEntry.ID? { isRestructuring ? nil : selection }
+    private var isRestructuring = false
+    @ObservationIgnored private var settleTask: Task<Void, Never>?
+
+    private func liftSidebarHighlight() {
+        isRestructuring = true
+        settleTask?.cancel()
+        settleTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            self?.isRestructuring = false
+        }
+    }
+
     /// Open files, in tab-bar order.
     var tabs: [DiffTab] = []
     var activeTabID: DiffTab.ID? {
@@ -168,6 +187,7 @@ final class AppModel {
         if let count = message.expectedCount { changeSet.expectedCount = count }
 
         var firstEntry: FileEntry?
+        let structureBefore = changeSet.structureKey
         for file in message.files {
             let entry = FileEntry(displayPath: file.displayPath, old: file.old, new: file.new)
             if let replaced = changeSet.upsert(entry) {
